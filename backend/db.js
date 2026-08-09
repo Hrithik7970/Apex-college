@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Force IPv4 DNS resolution first (fixes Render ENETUNREACH IPv6 issue)
+// Force IPv4 DNS resolution first
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
@@ -12,7 +12,7 @@ if (dns.setDefaultResultOrder) {
 let connectionString = process.env.DATABASE_URL;
 
 if (!connectionString || connectionString.includes('host:5432') || connectionString.includes('user:password')) {
-  connectionString = "postgresql://postgres:Hrithik%4032919@db.ynspfbneyigoxowxuyox.supabase.co:5432/postgres";
+  connectionString = "postgresql://postgres.ynspfbneyigoxowxuyox:Hrithik%4032919@aws-1-ap-south-1.pooler.supabase.com:6543/postgres";
 }
 
 const pool = new pg.Pool({
