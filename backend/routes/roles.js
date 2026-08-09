@@ -1,5 +1,5 @@
 import express from 'express';
-import prisma from '../db.js';
+import supabase from '../db.js';
 
 const router = express.Router();
 
@@ -7,13 +7,18 @@ const router = express.Router();
 router.get('/:email', async (req, res) => {
   try {
     const { email } = req.params;
-    const userRole = await prisma.userRole.findUnique({ where: { email } });
-    if (!userRole) {
+    const { data: userRole, error } = await supabase
+      .from('user_roles')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+
+    if (error || !userRole) {
       return res.json({ email, role: 'pending' });
     }
     res.json(userRole);
   } catch (err) {
-    console.error('Error fetching role:', err);
+    console.error('Error fetching role from Supabase:', err.message);
     res.status(500).json({ error: 'Failed to fetch user role' });
   }
 });
@@ -23,15 +28,19 @@ router.post('/', async (req, res) => {
   try {
     const { email, role } = req.body;
 
-    const updated = await prisma.userRole.upsert({
-      where: { email },
-      update: { role },
-      create: { email, role }
-    });
+    const { data: updated, error } = await supabase
+      .from('user_roles')
+      .upsert(
+        { email: email.toLowerCase(), role },
+        { onConflict: 'email' }
+      )
+      .select()
+      .single();
 
+    if (error) throw error;
     res.json(updated);
   } catch (err) {
-    console.error('Error setting role:', err);
+    console.error('Error setting role in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to update user role' });
   }
 });

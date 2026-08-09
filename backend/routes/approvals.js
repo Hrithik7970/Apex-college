@@ -1,17 +1,29 @@
 import express from 'express';
-import prisma from '../db.js';
+import supabase from '../db.js';
 
 const router = express.Router();
 
 // GET /api/approvals — Fetch all pending registration requests
 router.get('/', async (req, res) => {
   try {
-    const requests = await prisma.pendingApproval.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(requests);
+    const { data: requests, error } = await supabase
+      .from('pending_approvals')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formatted = (requests || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      department: r.department,
+      desiredRole: r.desired_role || r.desiredRole || 'student'
+    }));
+
+    res.json(formatted);
   } catch (err) {
-    console.error('Error fetching pending approvals:', err);
+    console.error('Error fetching pending approvals from Supabase:', err.message);
     res.status(500).json({ error: 'Failed to fetch pending approvals' });
   }
 });
@@ -21,18 +33,28 @@ router.post('/', async (req, res) => {
   try {
     const { name, email, department, desiredRole } = req.body;
 
-    const request = await prisma.pendingApproval.create({
-      data: {
+    const { data: request, error } = await supabase
+      .from('pending_approvals')
+      .insert([{
         name,
         email,
         department,
-        desiredRole: desiredRole || 'student'
-      }
-    });
+        desired_role: desiredRole || 'student'
+      }])
+      .select()
+      .single();
 
-    res.status(201).json(request);
+    if (error) throw error;
+
+    res.status(201).json({
+      id: request.id,
+      name: request.name,
+      email: request.email,
+      department: request.department,
+      desiredRole: request.desired_role || desiredRole
+    });
   } catch (err) {
-    console.error('Error creating pending approval:', err);
+    console.error('Error creating pending approval in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to submit registration request' });
   }
 });
@@ -43,56 +65,69 @@ router.post('/:id/approve', async (req, res) => {
     const { id } = req.params;
     const { assignedRole } = req.body;
 
-    const reqItem = await prisma.pendingApproval.findUnique({ where: { id } });
-    if (!reqItem) {
+    const { data: reqItem, error: fetchErr } = await supabase
+      .from('pending_approvals')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !reqItem) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    const roleToAssign = assignedRole || reqItem.desiredRole || 'student';
+    const roleToAssign = assignedRole || reqItem.desired_role || reqItem.desiredRole || 'student';
 
-    // Assign / update role in UserRole table
-    await prisma.userRole.upsert({
-      where: { email: reqItem.email },
-      update: { role: roleToAssign },
-      create: { email: reqItem.email, role: roleToAssign }
-    });
+    // Assign / update role in user_roles table
+    await supabase.from('user_roles').upsert(
+      { email: reqItem.email, role: roleToAssign },
+      { onConflict: 'email' }
+    );
 
     // If assigned role is student, check if student record exists or create default
     if (roleToAssign === 'student') {
-      const existingStudent = await prisma.student.findUnique({ where: { email: reqItem.email } });
+      const { data: existingStudent } = await supabase
+        .from('students')
+        .select('id')
+        .eq('email', reqItem.email)
+        .maybeSingle();
+
       if (!existingStudent) {
         const genRoll = `${reqItem.department.substring(0, 2).toUpperCase()}2025${Math.floor(100 + Math.random() * 900)}`;
-        await prisma.student.create({
-          data: {
+        const { data: newStudent } = await supabase
+          .from('students')
+          .insert([{
             name: reqItem.name,
-            rollNumber: genRoll,
+            roll_number: genRoll,
             email: reqItem.email,
             department: reqItem.department,
             year: 1,
             semester: 1,
             cgpa: 8.0,
-            feeStatus: 'Pending',
-            feeAmount: 45000,
-            courses: {
-              create: [{ courseName: 'Calculus I' }, { courseName: 'Intro to Programming' }]
-            },
-            documents: {
-              create: [
-                { name: 'High School Marksheet', status: 'Submitted' },
-                { name: 'ID Proof / Passport', status: 'Submitted' }
-              ]
-            }
-          }
-        });
+            fee_status: 'Pending',
+            fee_amount: 45000
+          }])
+          .select()
+          .single();
+
+        if (newStudent) {
+          await supabase.from('student_courses').insert([
+            { student_id: newStudent.id, course_name: 'Calculus I' },
+            { student_id: newStudent.id, course_name: 'Intro to Programming' }
+          ]);
+          await supabase.from('student_documents').insert([
+            { student_id: newStudent.id, name: 'High School Marksheet', status: 'Submitted' },
+            { student_id: newStudent.id, name: 'ID Proof / Passport', status: 'Submitted' }
+          ]);
+        }
       }
     }
 
     // Remove from pending list
-    await prisma.pendingApproval.delete({ where: { id } });
+    await supabase.from('pending_approvals').delete().eq('id', id);
 
     res.json({ message: 'Approved successfully', email: reqItem.email, assignedRole: roleToAssign });
   } catch (err) {
-    console.error('Error approving request:', err);
+    console.error('Error approving request in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to approve request' });
   }
 });
@@ -101,10 +136,11 @@ router.post('/:id/approve', async (req, res) => {
 router.post('/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.pendingApproval.delete({ where: { id } });
+    const { error } = await supabase.from('pending_approvals').delete().eq('id', id);
+    if (error) throw error;
     res.json({ message: 'Request rejected successfully', id });
   } catch (err) {
-    console.error('Error rejecting request:', err);
+    console.error('Error rejecting request in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to reject request' });
   }
 });

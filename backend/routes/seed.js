@@ -1,20 +1,20 @@
 import express from 'express';
-import prisma from '../db.js';
+import supabase from '../db.js';
 
 const router = express.Router();
 
 const INITIAL_STUDENTS = [
   {
     name: "Aarav Sharma",
-    rollNumber: "CS2023001",
+    roll_number: "CS2023001",
     email: "aarav.sharma@college.edu",
     department: "Computer Science",
     year: 3,
     semester: 5,
     cgpa: 9.2,
     attendance: 88,
-    feeStatus: "Paid",
-    feeAmount: 0,
+    fee_status: "Paid",
+    fee_amount: 0,
     courses: ["Database Systems", "Computer Networks", "Software Engineering", "Artificial Intelligence"],
     documents: [
       { name: "High School Marksheet", status: "Verified" },
@@ -24,15 +24,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Ananya Patel",
-    rollNumber: "CS2023009",
+    roll_number: "CS2023009",
     email: "ananya.patel@college.edu",
     department: "Computer Science",
     year: 3,
     semester: 5,
     cgpa: 8.7,
     attendance: 72,
-    feeStatus: "Pending",
-    feeAmount: 45000,
+    fee_status: "Pending",
+    fee_amount: 45000,
     courses: ["Database Systems", "Computer Networks", "Design of Algorithms", "Web Security"],
     documents: [
       { name: "High School Marksheet", status: "Submitted" },
@@ -42,15 +42,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Rohan Verma",
-    rollNumber: "ME2022045",
+    roll_number: "ME2022045",
     email: "rohan.verma@college.edu",
     department: "Mechanical",
     year: 4,
     semester: 7,
     cgpa: 7.9,
     attendance: 81,
-    feeStatus: "Paid",
-    feeAmount: 0,
+    fee_status: "Paid",
+    fee_amount: 0,
     courses: ["Fluid Mechanics", "CAD/CAM", "Refrigeration & AC", "Operations Research"],
     documents: [
       { name: "High School Marksheet", status: "Verified" },
@@ -60,15 +60,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Isha Gupta",
-    rollNumber: "EC2024012",
+    roll_number: "EC2024012",
     email: "isha.gupta@college.edu",
     department: "Electronics",
     year: 2,
     semester: 3,
     cgpa: 8.1,
     attendance: 94,
-    feeStatus: "Overdue",
-    feeAmount: 62000,
+    fee_status: "Overdue",
+    fee_amount: 62000,
     courses: ["Digital Electronics", "Network Analysis", "Signals & Systems", "Electromagnetic Fields"],
     documents: [
       { name: "High School Marksheet", status: "Verified" },
@@ -78,15 +78,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Kabir Mehta",
-    rollNumber: "IT2023015",
+    roll_number: "IT2023015",
     email: "kabir.mehta@college.edu",
     department: "Information Technology",
     year: 3,
     semester: 5,
     cgpa: 6.8,
     attendance: 64,
-    feeStatus: "Pending",
-    feeAmount: 38000,
+    fee_status: "Pending",
+    fee_amount: 38000,
     courses: ["Operating Systems", "Cloud Computing", "Human Computer Interaction", "Web Frameworks"],
     documents: [
       { name: "High School Marksheet", status: "Submitted" },
@@ -96,15 +96,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Sneha Reddy",
-    rollNumber: "EE2025008",
+    roll_number: "EE2025008",
     email: "sneha.reddy@college.edu",
     department: "Electrical",
     year: 1,
     semester: 1,
     cgpa: 8.5,
     attendance: 90,
-    feeStatus: "Paid",
-    feeAmount: 0,
+    fee_status: "Paid",
+    fee_amount: 0,
     courses: ["Calculus I", "Basic Electrical Eng", "Engineering Physics", "Intro to Programming"],
     documents: [
       { name: "High School Marksheet", status: "Verified" },
@@ -114,15 +114,15 @@ const INITIAL_STUDENTS = [
   },
   {
     name: "Aditya Sen",
-    rollNumber: "CV2022022",
+    roll_number: "CV2022022",
     email: "aditya.sen@college.edu",
     department: "Civil",
     year: 4,
     semester: 7,
     cgpa: 7.2,
     attendance: 68,
-    feeStatus: "Overdue",
-    feeAmount: 51000,
+    fee_status: "Overdue",
+    fee_amount: 51000,
     courses: ["Structural Analysis II", "Geotechnical Eng", "Hydrology", "Concrete Technology"],
     documents: [
       { name: "High School Marksheet", status: "Verified" },
@@ -140,8 +140,8 @@ const INITIAL_ROLES = [
 ];
 
 const INITIAL_PENDING = [
-  { name: "Vikram Malhotra", email: "vikram.malhotra@college.edu", department: "Information Technology", desiredRole: "student" },
-  { name: "Divya Nair", email: "divya.nair@college.edu", department: "Electronics", desiredRole: "student" }
+  { name: "Vikram Malhotra", email: "vikram.malhotra@college.edu", department: "Information Technology", desired_role: "student" },
+  { name: "Divya Nair", email: "divya.nair@college.edu", department: "Electronics", desired_role: "student" }
 ];
 
 const INITIAL_ANNOUNCEMENTS = [
@@ -161,64 +161,61 @@ const INITIAL_ANNOUNCEMENTS = [
   }
 ];
 
-// POST /api/seed — Seed database
+// POST /api/seed — Seed database in Supabase
 router.post('/', async (req, res) => {
   try {
-    // Clear existing
-    await prisma.attendanceLog.deleteMany();
-    await prisma.studentCourse.deleteMany();
-    await prisma.studentDocument.deleteMany();
-    await prisma.student.deleteMany();
-    await prisma.pendingApproval.deleteMany();
-    await prisma.announcement.deleteMany();
-    await prisma.complaint.deleteMany();
+    // Clear existing tables
+    await supabase.from('attendance_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('student_courses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('student_documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('pending_approvals').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('announcements').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('complaints').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
     // Insert Students
     for (const s of INITIAL_STUDENTS) {
-      await prisma.student.create({
-        data: {
+      const { data: createdStudent, error: sErr } = await supabase
+        .from('students')
+        .insert([{
           name: s.name,
-          rollNumber: s.rollNumber,
+          roll_number: s.roll_number,
           email: s.email,
           department: s.department,
           year: s.year,
           semester: s.semester,
           cgpa: s.cgpa,
           attendance: s.attendance,
-          feeStatus: s.feeStatus,
-          feeAmount: s.feeAmount,
-          courses: {
-            create: s.courses.map(c => ({ courseName: c }))
-          },
-          documents: {
-            create: s.documents.map(d => ({ name: d.name, status: d.status }))
-          }
-        }
-      });
+          fee_status: s.fee_status,
+          fee_amount: s.fee_amount
+        }])
+        .select()
+        .single();
+
+      if (!sErr && createdStudent) {
+        await supabase.from('student_courses').insert(
+          s.courses.map(c => ({ student_id: createdStudent.id, course_name: c }))
+        );
+        await supabase.from('student_documents').insert(
+          s.documents.map(d => ({ student_id: createdStudent.id, name: d.name, status: d.status }))
+        );
+      }
     }
 
     // Insert Roles
     for (const r of INITIAL_ROLES) {
-      await prisma.userRole.upsert({
-        where: { email: r.email },
-        update: { role: r.role },
-        create: { email: r.email, role: r.role }
-      });
+      await supabase.from('user_roles').upsert({ email: r.email, role: r.role }, { onConflict: 'email' });
     }
 
     // Insert Pending
-    for (const p of INITIAL_PENDING) {
-      await prisma.pendingApproval.create({ data: p });
-    }
+    await supabase.from('pending_approvals').insert(INITIAL_PENDING);
 
     // Insert Announcements
-    for (const a of INITIAL_ANNOUNCEMENTS) {
-      await prisma.announcement.create({ data: a });
-    }
+    await supabase.from('announcements').insert(INITIAL_ANNOUNCEMENTS);
 
-    res.json({ message: 'Database seeded successfully with initial records!' });
+    res.json({ message: 'Database seeded successfully in Supabase!' });
   } catch (err) {
-    console.error('Error seeding database:', err);
+    console.error('Error seeding Supabase database:', err.message);
     res.status(500).json({ error: 'Failed to seed database', details: err.message });
   }
 });
