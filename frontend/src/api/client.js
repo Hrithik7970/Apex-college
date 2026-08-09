@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 async function fetchWithFallback(url, options = {}) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5s timeout for local server check
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for deployed/local server check
 
     const response = await fetch(url, {
       ...options,
