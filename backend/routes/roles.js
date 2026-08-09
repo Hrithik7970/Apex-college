@@ -1,5 +1,6 @@
 import express from 'express';
-import supabase from '../db.js';
+import crypto from 'crypto';
+import db from '../db.js';
 
 const router = express.Router();
 
@@ -7,18 +8,13 @@ const router = express.Router();
 router.get('/:email', async (req, res) => {
   try {
     const { email } = req.params;
-    const { data: userRole, error } = await supabase
-      .from('user_roles')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .maybeSingle();
-
-    if (error || !userRole) {
+    const result = await db.query('SELECT * FROM "UserRole" WHERE LOWER("email") = LOWER($1);', [email]);
+    if (result.rows.length === 0) {
       return res.json({ email, role: 'pending' });
     }
-    res.json(userRole);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error fetching role from Supabase:', err.message);
+    console.error('Error fetching user role from Supabase:', err.message);
     res.status(500).json({ error: 'Failed to fetch user role' });
   }
 });
@@ -28,19 +24,17 @@ router.post('/', async (req, res) => {
   try {
     const { email, role } = req.body;
 
-    const { data: updated, error } = await supabase
-      .from('user_roles')
-      .upsert(
-        { email: email.toLowerCase(), role },
-        { onConflict: 'email' }
-      )
-      .select()
-      .single();
+    const queryText = `
+      INSERT INTO "UserRole" ("id", "email", "role", "createdAt")
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT ("email") DO UPDATE SET "role" = EXCLUDED."role"
+      RETURNING *;
+    `;
 
-    if (error) throw error;
-    res.json(updated);
+    const result = await db.query(queryText, [crypto.randomUUID(), email.toLowerCase(), role]);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error setting role in Supabase:', err.message);
+    console.error('Error setting user role in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to update user role' });
   }
 });

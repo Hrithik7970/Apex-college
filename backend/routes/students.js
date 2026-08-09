@@ -1,32 +1,50 @@
 import express from 'express';
-import supabase from '../db.js';
+import crypto from 'crypto';
+import db from '../db.js';
 
 const router = express.Router();
 
 // GET /api/students — Fetch all students with relations
 router.get('/', async (req, res) => {
   try {
-    const { data: students, error } = await supabase
-      .from('students')
-      .select('*, courses:student_courses(*), documents:student_documents(*), attendanceLogs:attendance_logs(*)');
+    const studentsRes = await db.query('SELECT * FROM "Student" ORDER BY "createdAt" DESC;');
+    const coursesRes = await db.query('SELECT * FROM "StudentCourse";');
+    const docsRes = await db.query('SELECT * FROM "StudentDocument";');
+    const logsRes = await db.query('SELECT * FROM "AttendanceLog";');
 
-    if (error) throw error;
+    const coursesMap = {};
+    coursesRes.rows.forEach(c => {
+      if (!coursesMap[c.studentId]) coursesMap[c.studentId] = [];
+      coursesMap[c.studentId].push(c.courseName);
+    });
 
-    const formatted = (students || []).map(s => ({
+    const docsMap = {};
+    docsRes.rows.forEach(d => {
+      if (!docsMap[d.studentId]) docsMap[d.studentId] = [];
+      docsMap[d.studentId].push({ name: d.name, status: d.status });
+    });
+
+    const logsMap = {};
+    logsRes.rows.forEach(l => {
+      if (!logsMap[l.studentId]) logsMap[l.studentId] = [];
+      logsMap[l.studentId].push({ date: l.date, course: l.course, status: l.status });
+    });
+
+    const formatted = studentsRes.rows.map(s => ({
       _id: s.id,
       name: s.name,
-      rollNumber: s.roll_number || s.rollNumber || '',
+      rollNumber: s.rollNumber,
       email: s.email,
       department: s.department,
       year: s.year,
       semester: s.semester,
-      cgpa: s.cgpa,
-      attendance: s.attendance,
-      feeStatus: s.fee_status || s.feeStatus || 'Pending',
-      feeAmount: s.fee_amount !== undefined ? s.fee_amount : (s.feeAmount || 0),
-      courses: (s.courses || []).map(c => c.course_name || c.courseName),
-      documents: (s.documents || []).map(d => ({ name: d.name, status: d.status })),
-      attendanceLogs: (s.attendanceLogs || []).map(l => ({ date: l.date, course: l.course, status: l.status }))
+      cgpa: parseFloat(s.cgpa) || 0.0,
+      attendance: s.attendance || 0,
+      feeStatus: s.feeStatus,
+      feeAmount: s.feeAmount,
+      courses: coursesMap[s.id] || [],
+      documents: docsMap[s.id] || [],
+      attendanceLogs: logsMap[s.id] || []
     }));
 
     res.json(formatted);
@@ -40,72 +58,80 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, rollNumber, email, department, year, semester, cgpa, feeStatus, feeAmount, courses } = req.body;
+    const studentId = crypto.randomUUID();
 
-    const studentRecord = {
+    const insertStudentQuery = `
+      INSERT INTO "Student" ("id", "name", "rollNumber", "email", "department", "year", "semester", "cgpa", "feeStatus", "feeAmount", "createdAt", "updatedAt")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+      RETURNING *;
+    `;
+    const studentRes = await db.query(insertStudentQuery, [
+      studentId,
       name,
-      roll_number: rollNumber,
+      rollNumber,
       email,
       department,
-      year: parseInt(year) || 1,
-      semester: parseInt(semester) || 1,
-      cgpa: parseFloat(cgpa) || 0.0,
-      fee_status: feeStatus || 'Pending',
-      fee_amount: parseInt(feeAmount) || 0
-    };
+      parseInt(year) || 1,
+      parseInt(semester) || 1,
+      parseFloat(cgpa) || 0.0,
+      feeStatus || 'Pending',
+      parseInt(feeAmount) || 0
+    ]);
 
-    const { data: student, error } = await supabase
-      .from('students')
-      .insert([studentRecord])
-      .select()
-      .single();
+    const createdStudent = studentRes.rows[0];
 
-    if (error) throw error;
-
-    // Add courses if provided
-    let courseList = [];
+    // Add courses
+    const courseList = [];
     if (courses && courses.length > 0) {
-      const courseInserts = courses.map(c => ({
-        student_id: student.id,
-        course_name: typeof c === 'string' ? c : c.courseName
-      }));
-      const { data: addedCourses } = await supabase.from('student_courses').insert(courseInserts).select();
-      courseList = (addedCourses || []).map(c => c.course_name);
+      for (const c of courses) {
+        const courseName = typeof c === 'string' ? c : c.courseName;
+        await db.query(
+          'INSERT INTO "StudentCourse" ("id", "studentId", "courseName") VALUES ($1, $2, $3);',
+          [crypto.randomUUID(), studentId, courseName]
+        );
+        courseList.push(courseName);
+      }
     }
 
     // Add initial documents
-    const docInserts = [
-      { student_id: student.id, name: 'High School Marksheet', status: 'Pending' },
-      { student_id: student.id, name: 'ID Proof / Passport', status: 'Pending' },
-      { student_id: student.id, name: 'Admissions Letter', status: 'Pending' }
+    const initialDocs = [
+      { name: 'High School Marksheet', status: 'Pending' },
+      { name: 'ID Proof / Passport', status: 'Pending' },
+      { name: 'Admissions Letter', status: 'Pending' }
     ];
-    const { data: addedDocs } = await supabase.from('student_documents').insert(docInserts).select();
-    const docList = (addedDocs || []).map(d => ({ name: d.name, status: d.status }));
+    for (const d of initialDocs) {
+      await db.query(
+        'INSERT INTO "StudentDocument" ("id", "studentId", "name", "status") VALUES ($1, $2, $3, $4);',
+        [crypto.randomUUID(), studentId, d.name, d.status]
+      );
+    }
 
     // Register user role
     try {
-      await supabase.from('user_roles').upsert({ email: email.toLowerCase(), role: 'student' }, { onConflict: 'email' });
+      await db.query(
+        'INSERT INTO "UserRole" ("id", "email", "role", "createdAt") VALUES ($1, $2, $3, NOW()) ON CONFLICT ("email") DO UPDATE SET "role" = EXCLUDED."role";',
+        [crypto.randomUUID(), email.toLowerCase(), 'student']
+      );
     } catch (rErr) {
       console.warn('Role registration warning:', rErr.message);
     }
 
-    const formatted = {
-      _id: student.id,
-      name: student.name,
-      rollNumber: student.roll_number || rollNumber,
-      email: student.email,
-      department: student.department,
-      year: student.year,
-      semester: student.semester,
-      cgpa: student.cgpa,
-      attendance: student.attendance || 0,
-      feeStatus: student.fee_status || feeStatus,
-      feeAmount: student.fee_amount || feeAmount,
-      courses: courseList.length > 0 ? courseList : (courses || []),
-      documents: docList,
+    res.status(201).json({
+      _id: createdStudent.id,
+      name: createdStudent.name,
+      rollNumber: createdStudent.rollNumber,
+      email: createdStudent.email,
+      department: createdStudent.department,
+      year: createdStudent.year,
+      semester: createdStudent.semester,
+      cgpa: parseFloat(createdStudent.cgpa),
+      attendance: createdStudent.attendance || 0,
+      feeStatus: createdStudent.feeStatus,
+      feeAmount: createdStudent.feeAmount,
+      courses: courseList,
+      documents: initialDocs,
       attendanceLogs: []
-    };
-
-    res.status(201).json(formatted);
+    });
   } catch (err) {
     console.error('Error creating student in Supabase:', err.message);
     res.status(400).json({ error: err.message || 'Failed to create student' });
@@ -118,70 +144,79 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { name, rollNumber, email, department, year, semester, cgpa, feeStatus, feeAmount, courses, documents } = req.body;
 
-    const updates = {};
-    if (name) updates.name = name;
-    if (rollNumber) updates.roll_number = rollNumber;
-    if (email) updates.email = email;
-    if (department) updates.department = department;
-    if (year !== undefined) updates.year = parseInt(year);
-    if (semester !== undefined) updates.semester = parseInt(semester);
-    if (cgpa !== undefined) updates.cgpa = parseFloat(cgpa);
-    if (feeStatus) updates.fee_status = feeStatus;
-    if (feeAmount !== undefined) updates.fee_amount = parseInt(feeAmount);
+    const updateQuery = `
+      UPDATE "Student"
+      SET 
+        "name" = COALESCE($1, "name"),
+        "rollNumber" = COALESCE($2, "rollNumber"),
+        "email" = COALESCE($3, "email"),
+        "department" = COALESCE($4, "department"),
+        "year" = COALESCE($5, "year"),
+        "semester" = COALESCE($6, "semester"),
+        "cgpa" = COALESCE($7, "cgpa"),
+        "feeStatus" = COALESCE($8, "feeStatus"),
+        "feeAmount" = COALESCE($9, "feeAmount"),
+        "updatedAt" = NOW()
+      WHERE "id" = $10
+      RETURNING *;
+    `;
 
-    const { data: updated, error } = await supabase
-      .from('students')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+    const studentRes = await db.query(updateQuery, [
+      name || null,
+      rollNumber || null,
+      email || null,
+      department || null,
+      year !== undefined ? parseInt(year) : null,
+      semester !== undefined ? parseInt(semester) : null,
+      cgpa !== undefined ? parseFloat(cgpa) : null,
+      feeStatus || null,
+      feeAmount !== undefined ? parseInt(feeAmount) : null,
+      id
+    ]);
 
-    if (error) throw error;
+    const updated = studentRes.rows[0];
 
-    // Handle courses update
     if (courses) {
-      await supabase.from('student_courses').delete().eq('student_id', id);
-      const courseInserts = courses.map(c => ({
-        student_id: id,
-        course_name: typeof c === 'string' ? c : c.courseName
-      }));
-      await supabase.from('student_courses').insert(courseInserts);
+      await db.query('DELETE FROM "StudentCourse" WHERE "studentId" = $1;', [id]);
+      for (const c of courses) {
+        const courseName = typeof c === 'string' ? c : c.courseName;
+        await db.query(
+          'INSERT INTO "StudentCourse" ("id", "studentId", "courseName") VALUES ($1, $2, $3);',
+          [crypto.randomUUID(), id, courseName]
+        );
+      }
     }
 
-    // Handle documents update
     if (documents) {
-      await supabase.from('student_documents').delete().eq('student_id', id);
-      const docInserts = documents.map(d => ({
-        student_id: id,
-        name: d.name,
-        status: d.status
-      }));
-      await supabase.from('student_documents').insert(docInserts);
+      await db.query('DELETE FROM "StudentDocument" WHERE "studentId" = $1;', [id]);
+      for (const d of documents) {
+        await db.query(
+          'INSERT INTO "StudentDocument" ("id", "studentId", "name", "status") VALUES ($1, $2, $3, $4);',
+          [crypto.randomUUID(), id, d.name, d.status]
+        );
+      }
     }
 
-    // Fetch updated relations
-    const { data: cData } = await supabase.from('student_courses').select('*').eq('student_id', id);
-    const { data: dData } = await supabase.from('student_documents').select('*').eq('student_id', id);
-    const { data: aData } = await supabase.from('attendance_logs').select('*').eq('student_id', id);
+    const cRes = await db.query('SELECT * FROM "StudentCourse" WHERE "studentId" = $1;', [id]);
+    const dRes = await db.query('SELECT * FROM "StudentDocument" WHERE "studentId" = $1;', [id]);
+    const lRes = await db.query('SELECT * FROM "AttendanceLog" WHERE "studentId" = $1;', [id]);
 
-    const formatted = {
+    res.json({
       _id: updated.id,
       name: updated.name,
-      rollNumber: updated.roll_number || updated.rollNumber || '',
+      rollNumber: updated.rollNumber,
       email: updated.email,
       department: updated.department,
       year: updated.year,
       semester: updated.semester,
-      cgpa: updated.cgpa,
+      cgpa: parseFloat(updated.cgpa),
       attendance: updated.attendance,
-      feeStatus: updated.fee_status || updated.feeStatus,
-      feeAmount: updated.fee_amount !== undefined ? updated.fee_amount : updated.feeAmount,
-      courses: (cData || []).map(c => c.course_name),
-      documents: (dData || []).map(d => ({ name: d.name, status: d.status })),
-      attendanceLogs: (aData || []).map(l => ({ date: l.date, course: l.course, status: l.status }))
-    };
-
-    res.json(formatted);
+      feeStatus: updated.feeStatus,
+      feeAmount: updated.feeAmount,
+      courses: cRes.rows.map(c => c.courseName),
+      documents: dRes.rows.map(d => ({ name: d.name, status: d.status })),
+      attendanceLogs: lRes.rows.map(l => ({ date: l.date, course: l.course, status: l.status }))
+    });
   } catch (err) {
     console.error('Error updating student in Supabase:', err.message);
     res.status(400).json({ error: 'Failed to update student' });
@@ -192,8 +227,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('students').delete().eq('id', id);
-    if (error) throw error;
+    await db.query('DELETE FROM "Student" WHERE "id" = $1;', [id]);
     res.json({ message: 'Student deleted successfully', id });
   } catch (err) {
     console.error('Error deleting student in Supabase:', err.message);
@@ -207,23 +241,22 @@ router.post('/:id/attendance', async (req, res) => {
     const { id } = req.params;
     const { date, course, status } = req.body;
 
-    const { error: logErr } = await supabase
-      .from('attendance_logs')
-      .insert([{ student_id: id, date, course, status }]);
+    await db.query(
+      'INSERT INTO "AttendanceLog" ("id", "studentId", "date", "course", "status") VALUES ($1, $2, $3, $4, $5);',
+      [crypto.randomUUID(), id, date, course, status]
+    );
 
-    if (logErr) throw logErr;
+    const logsRes = await db.query('SELECT * FROM "AttendanceLog" WHERE "studentId" = $1;', [id]);
+    const logs = logsRes.rows;
+    const presentCount = logs.filter(l => l.status === 'Present' || l.status === 'Late').length;
+    const newAttPct = logs.length > 0 ? Math.round((presentCount / logs.length) * 100) : 100;
 
-    // Recalculate attendance %
-    const { data: logs } = await supabase.from('attendance_logs').select('*').eq('student_id', id);
-    const presentCount = (logs || []).filter(l => l.status === 'Present' || l.status === 'Late').length;
-    const newAttPct = logs && logs.length > 0 ? Math.round((presentCount / logs.length) * 100) : 100;
-
-    await supabase.from('students').update({ attendance: newAttPct }).eq('id', id);
+    await db.query('UPDATE "Student" SET "attendance" = $1 WHERE "id" = $2;', [newAttPct, id]);
 
     res.json({
       _id: id,
       attendance: newAttPct,
-      attendanceLogs: (logs || []).map(l => ({ date: l.date, course: l.course, status: l.status }))
+      attendanceLogs: logs.map(l => ({ date: l.date, course: l.course, status: l.status }))
     });
   } catch (err) {
     console.error('Error logging attendance in Supabase:', err.message);
