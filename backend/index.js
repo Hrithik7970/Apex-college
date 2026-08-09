@@ -26,12 +26,30 @@ app.use('/api/complaints', complaintsRouter);
 app.use('/api/roles', rolesRouter);
 app.use('/api/seed', seedRouter);
 
+// Root landing route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: '🚀 Apex College Student Management System API is running live!',
+    database: 'PostgreSQL (Supabase)',
+    endpoints: {
+      health: '/api/health',
+      students: '/api/students',
+      announcements: '/api/announcements',
+      approvals: '/api/approvals',
+      complaints: '/api/complaints',
+      roles: '/api/roles'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     service: 'Apex College Student Management System API',
-    database: 'PostgreSQL (Prisma ORM)',
+    database: 'PostgreSQL (Supabase)',
     timestamp: new Date().toISOString()
   });
 });
