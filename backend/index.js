@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import db from './db.js';
 import studentsRouter from './routes/students.js';
 import approvalsRouter from './routes/approvals.js';
 import announcementsRouter from './routes/announcements.js';
@@ -34,6 +35,7 @@ app.get('/', (req, res) => {
     database: 'PostgreSQL (Supabase)',
     endpoints: {
       health: '/api/health',
+      testDb: '/api/test-db',
       students: '/api/students',
       announcements: '/api/announcements',
       approvals: '/api/approvals',
@@ -42,6 +44,16 @@ app.get('/', (req, res) => {
     },
     timestamp: new Date().toISOString()
   });
+});
+
+// Diagnostic endpoint to inspect live DB connection errors
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM "Student" LIMIT 1;');
+    res.json({ success: true, count: result.rows.length, sample: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
 });
 
 // Health check endpoint
