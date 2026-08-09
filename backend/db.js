@@ -1,7 +1,13 @@
 import pg from 'pg';
+import dns from 'dns';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Force IPv4 DNS resolution first (fixes Render ENETUNREACH IPv6 issue)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 let connectionString = process.env.DATABASE_URL;
 
