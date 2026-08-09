@@ -3,7 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres:Hrithik%4032919@db.ynspfbneyigoxowxuyox.supabase.co:5432/postgres";
+let connectionString = process.env.DATABASE_URL;
+
+if (!connectionString || connectionString.includes('host:5432') || connectionString.includes('user:password')) {
+  connectionString = "postgresql://postgres:Hrithik%4032919@db.ynspfbneyigoxowxuyox.supabase.co:5432/postgres";
+}
 
 const pool = new pg.Pool({
   connectionString,
