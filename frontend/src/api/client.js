@@ -1,6 +1,6 @@
 // Frontend API Client layer with automatic fallback to LocalStorage/State
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://apex-college.onrender.com/api';
 
 // Helper for safe fetch with fallback
 async function fetchWithFallback(url, options = {}) {
