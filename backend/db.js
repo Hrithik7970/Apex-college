@@ -7,7 +7,11 @@ const connectionString = process.env.DATABASE_URL || "postgresql://postgres:Hrit
 
 const pool = new pg.Pool({
   connectionString,
-  ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false }
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle pg client:', err);
 });
 
 export const db = {
