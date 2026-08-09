@@ -46,13 +46,13 @@ app.get('/', (req, res) => {
   });
 });
 
-// Diagnostic endpoint to inspect live DB connection errors
+// Diagnostic endpoint returning 200 with error details if query fails
 app.get('/api/test-db', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM "Student" LIMIT 1;');
     res.json({ success: true, count: result.rows.length, sample: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+    res.json({ success: false, error: err.message, code: err.code, detail: err.detail });
   }
 });
 
