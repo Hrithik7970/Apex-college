@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
       title,
       content,
       priority || 'Normal',
-      author || 'College Administration',
+      author || 'System Administration',
       formattedDate
     ]);
 

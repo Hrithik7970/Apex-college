@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { CreditCard, FileText, CheckCircle, AlertTriangle, Eye, X, Check, ShieldAlert, Plus, ArrowUpRight, ArrowDownLeft, BarChart2, Clock } from 'lucide-react';
-import { DEPARTMENTS, COURSES_BY_DEPT, generateWeeklySchedule } from '../mockData';
+import { CreditCard, FileText, CheckCircle, AlertTriangle, Eye, X, Check, ShieldAlert, Plus, ArrowUpRight, ArrowDownLeft, BarChart2, Clock, Users, Mail, Phone, Building } from 'lucide-react';
+import { DEPARTMENTS, COURSES_BY_DEPT, MOCK_REGISTRARS, generateWeeklySchedule } from '../mockData';
 
-export default function RegistrarWorkspace({ students = [], onUpdateBilling, onUpdateDocuments }) {
+export default function RegistrarWorkspace({ 
+  students = [], 
+  onUpdateBilling, 
+  onUpdateDocuments, 
+  userRole = 'registrar', 
+  registrars = MOCK_REGISTRARS,
+  activeSection = 'finance',
+  onTabChange
+}) {
   
   const handleDownloadInvoice = (student) => {
     const printWindow = window.open('', '_blank');
@@ -12,14 +20,15 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
     const adminFees = 5000;
     const totalSemFee = baseTuition + adminFees;
     
-    const amountPaid = student.feeStatus === 'Paid' ? totalSemFee : (totalSemFee - student.feeAmount);
-    const balanceDues = student.feeStatus === 'Paid' ? 0 : student.feeAmount;
+    const effectiveFee = (student.feeStatus !== 'Paid') ? (student.feeAmount > 0 ? student.feeAmount : totalSemFee) : 0;
+    const amountPaid = student.feeStatus === 'Paid' ? totalSemFee : Math.max(0, totalSemFee - effectiveFee);
+    const balanceDues = student.feeStatus === 'Paid' ? 0 : effectiveFee;
 
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Apex College Billing Invoice - ${student.name}</title>
+        <title>Student Management System Billing Invoice - ${student.name}</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
         <style>
           body {
@@ -170,9 +179,9 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
       </head>
       <body>
         <div class="header">
-          <div class="college-logo">A</div>
+          <div class="college-logo">S</div>
           <div class="title-area">
-            <h1>APEX TECH COLLEGE</h1>
+            <h1>STUDENT MANAGEMENT SYSTEM</h1>
             <p>Tuition Fee Clearance Invoice</p>
           </div>
         </div>
@@ -263,7 +272,7 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   const totalStudents = students.length;
   
   const totalOutstanding = students.reduce((acc, curr) => 
-    curr.feeStatus !== 'Paid' ? acc + curr.feeAmount : acc, 0
+    curr.feeStatus !== 'Paid' ? acc + (curr.feeAmount > 0 ? curr.feeAmount : 50000) : acc, 0
   );
   
   const paidCount = students.filter(s => s.feeStatus === 'Paid').length;
@@ -275,13 +284,16 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   let pendingVerifications = 0;
 
   students.forEach(s => {
-    if (s.documents) {
-      s.documents.forEach(doc => {
-        totalDocsCount++;
-        if (doc.status === 'Verified') verifiedDocsCount++;
-        if (doc.status === 'Submitted') pendingVerifications++;
-      });
-    }
+    const docs = (s.documents && s.documents.length > 0) ? s.documents : [
+      { name: "High School Marksheet", status: "Submitted" },
+      { name: "ID Proof / Passport", status: "Verified" },
+      { name: "Admissions Letter", status: "Pending" }
+    ];
+    docs.forEach(doc => {
+      totalDocsCount++;
+      if (doc.status === 'Verified') verifiedDocsCount++;
+      if (doc.status === 'Submitted' || doc.status === 'Pending') pendingVerifications++;
+    });
   });
 
   const docCompletionRate = totalDocsCount > 0 ? Math.round((verifiedDocsCount / totalDocsCount) * 100) : 0;
@@ -290,7 +302,12 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   const [selectedStudentFee, setSelectedStudentFee] = useState(null);
   
   // Registrar navigation and schedule selection states
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('finance'); // 'finance' | 'schedules'
+  const [internalWorkspaceTab, setInternalWorkspaceTab] = useState('finance');
+  const activeWorkspaceTab = activeSection || internalWorkspaceTab;
+  const setActiveWorkspaceTab = (tab) => {
+    setInternalWorkspaceTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
   const [selectedBranch, setSelectedBranch] = useState(DEPARTMENTS[0] || 'Computer Science');
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const getTodayDayString = () => {
@@ -308,7 +325,7 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   // Branch-wise outstanding dues and collections calculations
   const branchDuesData = DEPARTMENTS.map(dept => {
     const deptStudents = students.filter(s => s.department === dept);
-    const totalDeptDues = deptStudents.reduce((sum, s) => s.feeStatus !== 'Paid' ? sum + s.feeAmount : sum, 0);
+    const totalDeptDues = deptStudents.reduce((sum, s) => s.feeStatus !== 'Paid' ? sum + (s.feeAmount > 0 ? s.feeAmount : 50000) : sum, 0);
     const deptStudentsCount = deptStudents.length;
     const paidDeptStudents = deptStudents.filter(s => s.feeStatus === 'Paid').length;
     const collectionPct = deptStudentsCount > 0 ? Math.round((paidDeptStudents / deptStudentsCount) * 100) : 0;
@@ -335,7 +352,8 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   const openBillingModal = (student) => {
     setSelectedStudentFee(student);
     setFeeStatus(student.feeStatus);
-    setFeeAmount(student.feeAmount);
+    const initialAmount = student.feeStatus !== 'Paid' ? (student.feeAmount > 0 ? student.feeAmount : 50000) : 0;
+    setFeeAmount(initialAmount);
     setTransactionAmount('');
     setTransactionDesc('New Semester Tuition Fee');
     setActionType('add_charge');
@@ -360,6 +378,9 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
     } else {
       // Manual Override
       newAmount = parseFloat(feeAmount) || 0;
+      if (feeStatus !== 'Paid' && newAmount === 0) {
+        newAmount = 50000;
+      }
       newStatus = feeStatus;
     }
 
@@ -376,11 +397,12 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
   // Open Document handlers
   const openDocsModal = (student) => {
     setSelectedStudentDocs(student);
-    setDocsList(student.documents || [
-      { name: "High School Marksheet", status: "Pending" },
-      { name: "ID Proof / Passport", status: "Pending" },
+    const defaultDocs = [
+      { name: "High School Marksheet", status: "Submitted" },
+      { name: "ID Proof / Passport", status: "Verified" },
       { name: "Admissions Letter", status: "Pending" }
-    ]);
+    ];
+    setDocsList(student.documents && student.documents.length > 0 ? student.documents : defaultDocs);
   };
 
   const handleVerifyDoc = (docName, status) => {
@@ -410,43 +432,7 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
         </p>
       </div>
 
-      {/* Tab Navigation */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px', backgroundColor: 'var(--bg-secondary)', padding: '6px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', width: '100%', maxWidth: 'fit-content' }}>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            backgroundColor: activeWorkspaceTab === 'finance' ? 'var(--accent)' : 'transparent',
-            color: activeWorkspaceTab === 'finance' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveWorkspaceTab('finance')}
-        >
-          Finance &amp; Admissions Directory
-        </button>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            backgroundColor: activeWorkspaceTab === 'schedules' ? 'var(--accent)' : 'transparent',
-            color: activeWorkspaceTab === 'schedules' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveWorkspaceTab('schedules')}
-        >
-          Class Schedules Directory
-        </button>
-      </div>
+
 
       {activeWorkspaceTab === 'finance' && (
         <>
@@ -722,11 +708,18 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
               {students.map(student => {
                 const initials = student.name.split(' ').map(n=>n[0]).join('');
                 
-                // Summarize docs status
-                const docsCount = student.documents?.length || 0;
-                const verifiedCount = student.documents?.filter(d => d.status === 'Verified').length || 0;
-                const hasPendingDocs = student.documents?.some(d => d.status === 'Submitted');
-                const hasRejectedDocs = student.documents?.some(d => d.status === 'Rejected');
+                // Summarize docs status with fallback checklist
+                const docsList = (student.documents && student.documents.length > 0) ? student.documents : [
+                  { name: "High School Marksheet", status: "Submitted" },
+                  { name: "ID Proof / Passport", status: "Verified" },
+                  { name: "Admissions Letter", status: "Pending" }
+                ];
+                const docsCount = docsList.length;
+                const verifiedCount = docsList.filter(d => d.status === 'Verified').length;
+                const hasPendingDocs = docsList.some(d => d.status === 'Submitted' || d.status === 'Pending');
+                const hasRejectedDocs = docsList.some(d => d.status === 'Rejected');
+
+                const effectiveFee = (student.feeStatus !== 'Paid') ? (student.feeAmount > 0 ? student.feeAmount : 50000) : 0;
 
                 return (
                   <tr key={student._id}>
@@ -740,16 +733,28 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
                       </div>
                     </td>
                     
-                    {/* GPA & Attendance - STRICTLY LOCKED FOR REGISTRAR OFFICE */}
+                    {/* GPA & Attendance - Visible for Admin Role, Confidential for Registrar */}
                     <td>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        🔒 Confidential
-                      </span>
+                      {userRole === 'admin' ? (
+                        <span style={{ fontSize: '13px', fontWeight: '750', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          ⭐ {student.cgpa !== undefined ? student.cgpa : 0.0}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          🔒 Confidential
+                        </span>
+                      )}
                     </td>
                     <td>
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        🔒 Confidential
-                      </span>
+                      {userRole === 'admin' ? (
+                        <span style={{ fontSize: '13px', fontWeight: '750', color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          📊 {student.attendance !== undefined ? `${student.attendance}%` : '100%'}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          🔒 Confidential
+                        </span>
+                      )}
                     </td>
 
                     <td>
@@ -761,7 +766,7 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
                       </span>
                     </td>
                     <td style={{ fontWeight: '700' }}>
-                      ₹{student.feeStatus === 'Paid' ? '0' : student.feeAmount.toLocaleString('en-IN')}
+                      ₹{effectiveFee.toLocaleString('en-IN')}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -810,118 +815,89 @@ export default function RegistrarWorkspace({ students = [], onUpdateBilling, onU
       </>
       )}
 
-      {/* TAB 2: Class Schedules Directory */}
-      {activeWorkspaceTab === 'schedules' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeIn 0.25s ease' }}>
-          {/* Selection controls */}
-          <div className="chart-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', padding: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select Department Branch</label>
-              <select 
-                className="select-filter" 
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                style={{ width: '100%', fontSize: '14px', padding: '10px', backgroundColor: 'var(--bg-primary)' }}
-              >
-                {DEPARTMENTS.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
+
+
+      {/* TAB 3: Registrar Officers Directory */}
+      {activeWorkspaceTab === 'roster' && (
+        <div className="table-container" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 className="chart-title" style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Registrar Officers &amp; Desk Directory</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                Operational staff managing admissions billing, enrollment verification, and academic records.
+              </p>
             </div>
-            
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-secondary)' }}>Select Time-Table Day</label>
-              <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)', height: '40px', alignItems: 'center' }}>
-                {daysOfWeek.map(day => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setSelectedScheduleDay(day)}
-                    style={{
-                      padding: '6px 12px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      backgroundColor: selectedScheduleDay === day ? 'var(--accent)' : 'transparent',
-                      color: selectedScheduleDay === day ? 'white' : 'var(--text-secondary)'
-                    }}
-                  >
-                    {day.substring(0, 3)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <span className="badge badge-success" style={{ fontSize: '12px', padding: '6px 12px' }}>
+              {registrars.length} Officers On Duty
+            </span>
           </div>
 
-          {/* Schedule display grid */}
-          <div className="chart-card">
-            <div className="chart-header" style={{ display: 'flex', gap: '10px', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-              <Clock size={20} style={{ color: 'var(--accent)' }} />
-              <div>
-                <h3 className="chart-title">Class Time-Table ({selectedBranch})</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Showing lecture periods mapped to the selected branch courses.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {registrars.map(officer => (
+              <div 
+                key={officer.id}
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--warning-light)',
+                    color: 'var(--warning)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '800',
+                    fontSize: '18px'
+                  }}>
+                    {officer.name.split(' ').map(n=>n[0]).join('').substring(0, 2)}
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)' }}>{officer.name}</h4>
+                    <span style={{ fontSize: '12px', color: 'var(--warning)', fontWeight: '700' }}>{officer.title}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <span className="badge badge-warning" style={{ fontSize: '11px' }}>
+                    {officer.employeeId}
+                  </span>
+                  <span className="badge badge-success" style={{ fontSize: '11px' }}>
+                    {officer.status}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Building size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{officer.desk}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Phone size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                    <span>{officer.phone}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Mail size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span>{officer.email}</span>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '12px', color: 'var(--text-primary)', backgroundColor: 'var(--bg-primary)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '2px' }}>Assigned Domain:</strong>
+                  {officer.responsibility}
+                </div>
               </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '20px' }}>
-              {(() => {
-                const branchCourses = COURSES_BY_DEPT[selectedBranch] || [];
-                const sched = generateWeeklySchedule(selectedBranch, branchCourses);
-                const activeDaySched = sched ? sched[selectedScheduleDay] : [];
-
-                return activeDaySched.map((slot, idx) => {
-                  const isLunch = slot.isBreak;
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color)',
-                        backgroundColor: isLunch ? 'var(--warning-light)' : 'var(--bg-secondary)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        transition: 'all 0.2s ease',
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {isLunch && (
-                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '4px', backgroundColor: 'var(--warning)' }} />
-                      )}
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', color: isLunch ? 'var(--warning-text)' : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {slot.name}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={11} /> {slot.time}
-                        </span>
-                      </div>
-
-                      <h4 style={{ fontSize: '14px', fontWeight: '800', margin: 0, color: isLunch ? 'var(--warning-text)' : 'var(--text-primary)' }}>
-                        {slot.subject}
-                      </h4>
-
-                      {!isLunch && (
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          Duration: 55 mins
-                        </span>
-                      )}
-                      {isLunch && (
-                        <span style={{ fontSize: '11px', color: 'var(--warning-text)' }}>
-                          Duration: 1 hour break
-                        </span>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
-            </div>
+            ))}
           </div>
         </div>
       )}

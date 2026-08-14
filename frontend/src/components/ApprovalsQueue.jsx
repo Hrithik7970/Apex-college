@@ -11,7 +11,7 @@ export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onRej
   const [department, setDepartment] = useState('Computer Science');
   const [year, setYear] = useState(1);
   const [semester, setSemester] = useState(1);
-  const [cgpa, setCgpa] = useState(0.0);
+  const [cgpa, setCgpa] = useState(6.0);
   const [feeAmount, setFeeAmount] = useState(50000);
   const [selectedCourses, setSelectedCourses] = useState([]);
 
@@ -28,7 +28,7 @@ export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onRej
     
     setYear(1);
     setSemester(1);
-    setCgpa(0.0);
+    setCgpa(6.0);
     setFeeAmount(50000);
     setSelectedCourses([]);
   };
@@ -78,7 +78,7 @@ export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onRej
         department,
         year: parseInt(year, 10),
         semester: parseInt(semester, 10),
-        cgpa: parseFloat(cgpa) || 0.0,
+        cgpa: Math.max(6.0, parseFloat(cgpa) || 6.0),
         attendance: 100,
         feeStatus: feeAmount > 0 ? 'Pending' : 'Paid',
         feeAmount: parseFloat(feeAmount) || 0,

@@ -69,7 +69,7 @@ export default function PendingApprovalView({
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '12px' }}>Approval Pending</h2>
             <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
-              Thank you, <strong>{requestDetails.name}</strong>! Your application is pending review by the college administrator.
+              Thank you, <strong>{requestDetails.name}</strong>! Your application is pending review by the system administrator.
             </p>
             
             <div style={{

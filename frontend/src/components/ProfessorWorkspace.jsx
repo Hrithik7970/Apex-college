@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Award, CheckCircle, AlertTriangle, Edit3, X, Calendar, CheckSquare, Users, MessageSquare, Clock } from 'lucide-react';
-import { COURSES_BY_DEPT, generateWeeklySchedule } from '../mockData';
+import { Award, CheckCircle, AlertTriangle, Edit3, X, Calendar, CheckSquare, Users, MessageSquare, Clock, Mail, Phone, MapPin, GraduationCap } from 'lucide-react';
+import { DEPARTMENTS, COURSES_BY_DEPT, MOCK_PROFESSORS, generateWeeklySchedule } from '../mockData';
 
 export default function ProfessorWorkspace({ 
   students = [], 
@@ -8,10 +8,22 @@ export default function ProfessorWorkspace({
   onUpdatePerformance,
   onUpdateBulkAttendance,
   complaints = [],
-  onResolveComplaint
+  onResolveComplaint,
+  userRole = '',
+  professors = MOCK_PROFESSORS,
+  activeSection = 'performance',
+  onTabChange
 }) {
-  // Filter students to only show the professor's department
-  const deptStudents = students.filter(s => s.department === department);
+  const [selectedDept, setSelectedDept] = useState(department);
+
+  useEffect(() => {
+    setSelectedDept(department);
+  }, [department]);
+
+  const currentDept = userRole === 'admin' ? selectedDept : department;
+
+  // Filter students to only show the selected department
+  const deptStudents = students.filter(s => s.department === currentDept);
   
   // Calculate department KPIs
   const totalStudents = deptStudents.length;
@@ -22,10 +34,16 @@ export default function ProfessorWorkspace({
   const riskStudents = deptStudents.filter(s => s.attendance < 75);
   const attendanceWarningCount = riskStudents.length;
 
-  const courses = COURSES_BY_DEPT[department] || [];
+  const courses = COURSES_BY_DEPT[currentDept] || [];
 
-  // Tab controls
-  const [activeTab, setActiveTab] = useState('performance'); // 'performance' | 'attendance' | 'complaints'
+  // Tab controls - controlled from Left Sidebar or internal state
+  const [internalTab, setInternalTab] = useState('performance');
+  const activeTab = activeSection || internalTab;
+
+  const setActiveTab = (tab) => {
+    setInternalTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
 
   // Performance Edit State
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -46,7 +64,7 @@ export default function ProfessorWorkspace({
   };
   const [selectedScheduleDay, setSelectedScheduleDay] = useState(getTodayDayString());
 
-  const deptSchedule = generateWeeklySchedule(department, courses);
+  const deptSchedule = generateWeeklySchedule(currentDept, courses);
   const activeDaySchedule = deptSchedule ? deptSchedule[selectedScheduleDay] : [];
 
   // Complaint Resolution States
@@ -54,7 +72,7 @@ export default function ProfessorWorkspace({
   const [resolutionText, setResolutionText] = useState('');
 
   // Filter complaints for this department
-  const deptComplaints = complaints.filter(c => c.department === department);
+  const deptComplaints = complaints.filter(c => c.department === currentDept);
   const pendingComplaintsCount = deptComplaints.filter(c => c.status === 'Pending').length;
 
   // Sync attendance state when date/course changes
@@ -116,18 +134,37 @@ export default function ProfessorWorkspace({
     <div className="professor-view" style={{ animation: 'fadeIn 0.3s ease' }}>
       
       {/* Welcome Banner */}
-      <div className="metric-card" style={{ marginBottom: '32px', backgroundColor: 'var(--bg-secondary)', padding: '24px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '800' }}>Academic Portal: {department} Department</h2>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          You have access to manage grades (GPA) and log attendance logs for students enrolled in your department.
-        </p>
+      <div className="metric-card" style={{ marginBottom: '32px', backgroundColor: 'var(--bg-secondary)', padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 style={{ fontSize: '20px', fontWeight: '800' }}>Academic Portal: {currentDept} Department</h2>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            {userRole === 'admin' 
+              ? 'Staff Admin Mode: Inspect and manage grades, attendance logs, and grievances across all academic departments.'
+              : 'You have access to manage grades (GPA) and log attendance logs for students enrolled in your department.'}
+          </p>
+        </div>
+        {userRole === 'admin' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)' }}>Select Branch:</label>
+            <select
+              className="select-filter"
+              style={{ fontWeight: '700', padding: '10px 16px', borderColor: 'var(--accent)' }}
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+            >
+              {DEPARTMENTS.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
       <div className="metrics-grid" style={{ marginBottom: '32px' }}>
         <div className="metric-card">
           <div className="metric-info">
-            <span className="metric-label">Enrolled in {department}</span>
+            <span className="metric-label">Enrolled in {currentDept}</span>
             <span className="metric-value">{totalStudents}</span>
           </div>
           <div className="metric-icon-box" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
@@ -158,85 +195,7 @@ export default function ProfessorWorkspace({
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px', backgroundColor: 'var(--bg-secondary)', padding: '6px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', width: '100%', maxWidth: 'fit-content' }}>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            backgroundColor: activeTab === 'performance' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'performance' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveTab('performance')}
-        >
-          Grades &amp; Performance
-        </button>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            backgroundColor: activeTab === 'attendance' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'attendance' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveTab('attendance')}
-        >
-          Log Daily Attendance
-        </button>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            backgroundColor: activeTab === 'complaints' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'complaints' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveTab('complaints')}
-        >
-          Complaints Desk
-          {pendingComplaintsCount > 0 && (
-            <span className="badge badge-warning" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--warning)', color: 'var(--warning-text)' }}>
-              {pendingComplaintsCount}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontWeight: '700',
-            fontSize: '13px',
-            backgroundColor: activeTab === 'schedule' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'schedule' ? 'white' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
-          }}
-          onClick={() => setActiveTab('schedule')}
-        >
-          Department Schedule
-        </button>
-      </div>
+
 
       {/* TAB 1: Performance/Grades Grid */}
       {activeTab === 'performance' && (
@@ -756,6 +715,103 @@ export default function ProfessorWorkspace({
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: Faculty & Professors Roster */}
+      {(activeTab === 'faculty' || activeTab === 'roster') && (
+        <div className="table-container" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 className="chart-title" style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Faculty &amp; Professors Directory</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                Showing academic professors and departmental HODs across college departments.
+              </p>
+            </div>
+            <span className="badge badge-info" style={{ fontSize: '12px', padding: '6px 12px' }}>
+              {professors.length} Professors Enrolled
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {professors.map(prof => (
+              <div 
+                key={prof.id} 
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--accent-light)',
+                    color: 'var(--accent)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '800',
+                    fontSize: '18px'
+                  }}>
+                    {prof.name.split(' ').map(n=>n[0]).join('').substring(0, 2)}
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)' }}>{prof.name}</h4>
+                    <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: '700' }}>{prof.designation}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  <span className="badge" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '11px' }}>
+                    {prof.department}
+                  </span>
+                  <span className="badge badge-success" style={{ fontSize: '11px' }}>
+                    {prof.experienceYears} Yrs Experience
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <GraduationCap size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prof.qualification}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MapPin size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />
+                    <span>{prof.office}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Phone size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                    <span>{prof.phone}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Mail size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{prof.email}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
+                    Assigned Courses:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {prof.courses.map(c => (
+                      <span key={c} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'var(--accent-light)', color: 'var(--accent)', fontWeight: '600' }}>
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

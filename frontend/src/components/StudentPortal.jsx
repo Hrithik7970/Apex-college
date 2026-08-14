@@ -2,10 +2,35 @@ import React, { useState } from 'react';
 import { Mail, BookOpen, Award, CreditCard, AlertTriangle, Calendar, FileText, CheckCircle, MessageSquare, Send, Clock } from 'lucide-react';
 import { generateWeeklySchedule } from '../mockData';
 
-export default function StudentPortal({ students = [], complaints = [], onAddComplaint, activeSection = 'overview' }) {
-  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?._id || '');
+export default function StudentPortal({ 
+  students = [], 
+  initialStudentId = '', 
+  complaints = [], 
+  onAddComplaint, 
+  activeSection = 'overview',
+  userRole = 'student'
+}) {
+  const canSwitchProfiles = userRole === 'admin' || userRole === 'professor' || userRole === 'registrar';
 
-  const activeStudent = students.find(s => s._id === selectedStudentId);
+  const [selectedStudentId, setSelectedStudentId] = useState(() => {
+    if (initialStudentId && students.some(s => (s._id || s.id) === initialStudentId)) {
+      return initialStudentId;
+    }
+    return students[0]?._id || students[0]?.id || '';
+  });
+
+  React.useEffect(() => {
+    if (initialStudentId && students.some(s => (s._id || s.id) === initialStudentId)) {
+      setSelectedStudentId(initialStudentId);
+    } else if (!canSwitchProfiles && students.length > 0) {
+      const lockedId = initialStudentId || students[0]?._id || students[0]?.id || '';
+      setSelectedStudentId(lockedId);
+    }
+  }, [initialStudentId, students, canSwitchProfiles]);
+
+  const activeStudent = canSwitchProfiles
+    ? (students.find(s => (s._id || s.id) === selectedStudentId) || students[0])
+    : (students.find(s => (s._id || s.id) === initialStudentId) || students[0]);
   
   // Complaint form states
   const [compSubject, setCompSubject] = useState('');
@@ -45,7 +70,7 @@ export default function StudentPortal({ students = [], complaints = [], onAddCom
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Apex College Academic Transcript - ${student.name}</title>
+        <title>Student Management System Transcript - ${student.name}</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
         <style>
           body {
@@ -184,9 +209,9 @@ export default function StudentPortal({ students = [], complaints = [], onAddCom
       </head>
       <body>
         <div class="header">
-          <div class="college-logo">A</div>
+          <div class="college-logo">S</div>
           <div class="title-area">
-            <h1>APEX TECH COLLEGE</h1>
+            <h1>STUDENT MANAGEMENT SYSTEM</h1>
             <p>Official Grade Report Card</p>
           </div>
         </div>
@@ -257,7 +282,7 @@ export default function StudentPortal({ students = [], complaints = [], onAddCom
     if (!compSubject.trim() || !compDesc.trim()) return;
 
     onAddComplaint({
-      studentId: activeStudent._id,
+      studentId: activeStudent._id || activeStudent.id,
       studentName: activeStudent.name,
       studentRoll: activeStudent.rollNumber,
       department: activeStudent.department,
@@ -309,7 +334,7 @@ export default function StudentPortal({ students = [], complaints = [], onAddCom
 
   const sgpas = activeStudent ? getMockSemesterSgpas(activeStudent) : [];
   const subjectAttendance = activeStudent ? getSubjectAttendanceFromLogs(activeStudent) : [];
-  const studentComplaints = activeStudent ? complaints.filter(c => c.studentId === activeStudent._id) : [];
+  const studentComplaints = activeStudent ? complaints.filter(c => c.studentId === (activeStudent._id || activeStudent.id)) : [];
 
   // Schedule configurations
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -358,25 +383,30 @@ export default function StudentPortal({ students = [], complaints = [], onAddCom
   return (
     <div className="student-portal-view" style={{ animation: 'fadeIn 0.3s ease' }}>
       
-      {/* Student Selector Bar */}
-      <div className="directory-controls" style={{ marginBottom: '32px' }}>
-        <div>
-          <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '4px' }}>Simulate Student Portal</h4>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Select a student profile below to enter their personal portal dashboard.</p>
+      {/* Student Selector Bar - Visible ONLY to Admin / Teachers / Registrars */}
+      {canSwitchProfiles && (
+        <div className="directory-controls" style={{ marginBottom: '32px' }}>
+          <div>
+            <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '4px' }}>Student Profile Inspector (Staff View)</h4>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Select a student profile below to inspect their portal records.</p>
+          </div>
+          <div>
+            <select
+              className="select-filter"
+              style={{ fontWeight: '700', borderColor: 'var(--accent)', padding: '12px 20px' }}
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+            >
+              {students.map(s => {
+                const sId = s._id || s.id;
+                return (
+                  <option key={sId} value={sId}>{s.name} ({s.rollNumber})</option>
+                );
+              })}
+            </select>
+          </div>
         </div>
-        <div>
-          <select
-            className="select-filter"
-            style={{ fontWeight: '700', borderColor: 'var(--accent)', padding: '12px 20px' }}
-            value={selectedStudentId}
-            onChange={(e) => setSelectedStudentId(e.target.value)}
-          >
-            {students.map(s => (
-              <option key={s._id} value={s._id}>{s.name} ({s.rollNumber})</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      )}
 
       {!activeStudent ? (
         <div className="empty-state">

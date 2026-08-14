@@ -10,10 +10,10 @@ export default function StudentFormDrawer({ isOpen, onClose, onSave, student }) 
     department: DEPARTMENTS[0],
     year: 1,
     semester: 1,
-    cgpa: 0,
+    cgpa: 6.0,
     attendance: 100,
     feeStatus: 'Pending',
-    feeAmount: 0,
+    feeAmount: 50000,
     courses: []
   };
 
@@ -24,6 +24,7 @@ export default function StudentFormDrawer({ isOpen, onClose, onSave, student }) 
     if (student) {
       setFormData({
         ...student,
+        cgpa: Math.max(6.0, parseFloat(student.cgpa) || 6.0),
         courses: student.courses || []
       });
     } else {
@@ -186,7 +187,7 @@ export default function StudentFormDrawer({ isOpen, onClose, onSave, student }) 
                 type="number"
                 name="cgpa"
                 step="0.01"
-                min="0"
+                min="6.0"
                 max="10"
                 className="form-control"
                 value={formData.cgpa}

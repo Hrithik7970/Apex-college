@@ -1,10 +1,12 @@
 import React from 'react';
-import { Users, GraduationCap, AlertTriangle, CreditCard } from 'lucide-react';
-import { DEPARTMENTS } from '../mockData';
+import { Users, GraduationCap, AlertTriangle, CreditCard, BookOpen, ShieldAlert } from 'lucide-react';
+import { DEPARTMENTS, MOCK_PROFESSORS, MOCK_REGISTRARS } from '../mockData';
 
-export default function Dashboard({ students = [] }) {
+export default function Dashboard({ students = [], professors = MOCK_PROFESSORS, registrars = MOCK_REGISTRARS }) {
   // 1. Calculations for Metric Cards
   const totalStudents = students.length;
+  const totalProfessors = professors.length;
+  const totalRegistrars = registrars.length;
   
   const avgCgpa = totalStudents > 0
     ? (students.reduce((acc, curr) => acc + curr.cgpa, 0) / totalStudents).toFixed(2)
@@ -44,7 +46,7 @@ export default function Dashboard({ students = [] }) {
   return (
     <div className="dashboard-view" style={{ animation: 'fadeIn 0.3s ease' }}>
       
-      {/* 4 Metric Cards */}
+      {/* 6 Metric Cards */}
       <div className="metrics-grid">
         <div className="metric-card">
           <div className="metric-info">
@@ -53,6 +55,26 @@ export default function Dashboard({ students = [] }) {
           </div>
           <div className="metric-icon-box" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
             <Users size={24} />
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-info">
+            <span className="metric-label">Faculty &amp; Professors</span>
+            <span className="metric-value">{totalProfessors}</span>
+          </div>
+          <div className="metric-icon-box" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+            <BookOpen size={24} />
+          </div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-info">
+            <span className="metric-label">Registrar Officers</span>
+            <span className="metric-value">{totalRegistrars}</span>
+          </div>
+          <div className="metric-icon-box" style={{ backgroundColor: 'var(--warning-light)', color: 'var(--warning)' }}>
+            <ShieldAlert size={24} />
           </div>
         </div>
 

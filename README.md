@@ -1,16 +1,33 @@
-# React + Vite
+# Student Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A full-featured **Student Management System** built with React, Vite, Express, and PostgreSQL (Supabase) featuring multi-role access (Admin, Professor, Registrar, Student), student record management, attendance tracking, fee management, complaint resolution, and announcement broadcasting.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Role-Based Access Control**: Portals for Admin, Professor, Registrar, and Students.
+- **Student Directory & Profiles**: Filter by branch, fee status, search roll numbers, and view detailed academic performance.
+- **Attendance & Grade Management**: Track course-level attendance percentages and CGPA.
+- **Financial & Registrar Workspace**: Fee status monitoring, invoice generation, and clearance certificates.
+- **Grievance & Announcement Boards**: System-wide announcements and student complaint submission/resolution tracking.
 
-## React Compiler
+## 📁 Project Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `frontend/` - React 19 + Vite app with Clerk authentication integration.
+- `backend/` - Node.js Express API connected to Supabase PostgreSQL database.
+- `supabase_schema.sql` - Complete SQL schema setup for backend persistence.
 
-## Expanding the Oxlint configuration
+## 🛠️ Setup & Running Locally
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. **Frontend Setup**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+2. **Backend Setup**:
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```

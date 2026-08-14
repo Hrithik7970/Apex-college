@@ -31,7 +31,7 @@ app.use('/api/seed', seedRouter);
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
-    message: '🚀 Apex College Student Management System API is running live!',
+    message: '🚀 Student Management System API is running live!',
     database: 'PostgreSQL (Supabase)',
     endpoints: {
       health: '/api/health',
@@ -60,12 +60,12 @@ app.get('/api/test-db', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
-    service: 'Apex College Student Management System API',
+    service: 'Student Management System API',
     database: 'PostgreSQL (Supabase)',
     timestamp: new Date().toISOString()
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Apex College Express backend server running on http://localhost:${PORT}`);
+  console.log(`🚀 Student Management System Express backend server running on http://localhost:${PORT}`);
 });

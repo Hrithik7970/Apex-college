@@ -131,7 +131,7 @@ export default function StudentTable({ students = [], onSelectStudent, onEditStu
                     </td>
                     <td>{student.department}</td>
                     <td>Year {student.year} (Sem {student.semester})</td>
-                    <td style={{ fontWeight: '600' }}>{student.cgpa.toFixed(2)}</td>
+                    <td style={{ fontWeight: '600' }}>{Math.max(6.0, parseFloat(student.cgpa) || 6.0).toFixed(2)}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className={`badge ${student.attendance >= 75 ? 'badge-success' : 'badge-danger'}`} style={{ width: '45px', justifyContent: 'center' }}>

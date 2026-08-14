@@ -2,7 +2,7 @@ import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
 import { Shield, BookOpen, Users, BarChart2 } from 'lucide-react';
 
-export default function LoginView({ onDemoLogin }) {
+export default function LoginView() {
   return (
     <div style={{
       display: 'flex',
@@ -48,13 +48,13 @@ export default function LoginView({ onDemoLogin }) {
             fontWeight: '900',
             marginBottom: '28px',
             border: '1px solid rgba(255,255,255,0.2)'
-          }}>A</div>
+          }}>S</div>
           
           <h1 style={{ fontSize: '42px', fontWeight: '800', marginBottom: '16px', letterSpacing: '-1.5px', lineHeight: '1.1' }}>
-            Apex College Academic Portal
+            Student Management System
           </h1>
           <p style={{ fontSize: '17px', opacity: 0.85, marginBottom: '48px', lineHeight: '1.6' }}>
-            A comprehensive MERN-stack student management network for college staff and student self-service utilities.
+            A comprehensive student management system for staff, professors, registrars, and student self-service utilities.
           </p>
 
           {/* Core Feature List cards */}
@@ -95,7 +95,7 @@ export default function LoginView({ onDemoLogin }) {
 
       </div>
 
-      {/* Right Column: Clerk Authorization Widget & Demo Mode */}
+      {/* Right Column: Clerk Authorization Widget */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -108,8 +108,9 @@ export default function LoginView({ onDemoLogin }) {
         overflowY: 'auto'
       }} className="login-widget-sec">
         
+        {/* Clerk Sign In Card */}
         <div style={{
-          transform: 'scale(1.05)',
+          transform: 'scale(1.02)',
           animation: 'fadeIn 0.5s ease',
           boxShadow: 'var(--shadow-lg)',
           borderRadius: '16px',

@@ -169,6 +169,147 @@ export const MOCK_PENDING_APPROVALS = [
   }
 ];
 
+export const MOCK_PROFESSORS = [
+  {
+    id: "p1",
+    name: "Dr. Rajesh Sharma",
+    email: "professor@college.edu",
+    department: "Computer Science",
+    designation: "Head of Department (HOD)",
+    qualification: "Ph.D. in Computer Science & AI (IIT Bombay)",
+    phone: "+91 98765 43210",
+    office: "CS Building, Block A - Room 302",
+    courses: ["Database Systems", "Artificial Intelligence", "Compiler Design"],
+    experienceYears: 18,
+    status: "Active"
+  },
+  {
+    id: "p2",
+    name: "Dr. Sunita Rao",
+    email: "sunita.rao@college.edu",
+    department: "Computer Science",
+    designation: "Associate Professor",
+    qualification: "Ph.D. in Cybersecurity & Networks",
+    phone: "+91 98765 43211",
+    office: "CS Building, Block A - Room 305",
+    courses: ["Computer Networks", "Web Security", "Software Engineering"],
+    experienceYears: 12,
+    status: "Active"
+  },
+  {
+    id: "p3",
+    name: "Prof. Amit Kulkarni",
+    email: "amit.kulkarni@college.edu",
+    department: "Information Technology",
+    designation: "HOD & Professor",
+    qualification: "M.Tech in Cloud Systems & Distributed Computing",
+    phone: "+91 98765 43212",
+    office: "IT Block - Room 201",
+    courses: ["Cloud Computing", "Operating Systems", "Cyber Security"],
+    experienceYears: 15,
+    status: "Active"
+  },
+  {
+    id: "p4",
+    name: "Dr. Priya Deshmukh",
+    email: "priya.deshmukh@college.edu",
+    department: "Electronics",
+    designation: "Head of Department (HOD)",
+    qualification: "Ph.D. in Microelectronics & VLSI",
+    phone: "+91 98765 43213",
+    office: "ECE Building - Room 104",
+    courses: ["Digital Electronics", "VLSI Design", "Microprocessors"],
+    experienceYears: 16,
+    status: "Active"
+  },
+  {
+    id: "p5",
+    name: "Prof. Vikram Joshi",
+    email: "vikram.joshi@college.edu",
+    department: "Mechanical",
+    designation: "Associate Professor",
+    qualification: "M.Tech in Thermal Engineering & Fluid Dynamics",
+    phone: "+91 98765 43214",
+    office: "Mechanical Wing - Room 112",
+    courses: ["Fluid Mechanics", "Thermodynamics", "CAD/CAM"],
+    experienceYears: 10,
+    status: "Active"
+  },
+  {
+    id: "p6",
+    name: "Dr. Meenakshi Iyer",
+    email: "meenakshi.iyer@college.edu",
+    department: "Civil",
+    designation: "HOD & Senior Professor",
+    qualification: "Ph.D. in Structural Engineering & Geotechnics",
+    phone: "+91 98765 43215",
+    office: "Civil Complex - Room 401",
+    courses: ["Structural Analysis II", "Geotechnical Eng", "Hydrology"],
+    experienceYears: 20,
+    status: "Active"
+  },
+  {
+    id: "p7",
+    name: "Prof. Suresh Nambiar",
+    email: "suresh.nambiar@college.edu",
+    department: "Electrical",
+    designation: "Assistant Professor",
+    qualification: "M.Tech in Power Systems & Control Systems",
+    phone: "+91 98765 43216",
+    office: "Electrical Hall - Room 208",
+    courses: ["Basic Electrical Eng", "Control Systems", "Power Electronics"],
+    experienceYears: 8,
+    status: "Active"
+  }
+];
+
+export const MOCK_REGISTRARS = [
+  {
+    id: "r1",
+    name: "Rameshwar Prasad",
+    email: "registrar@college.edu",
+    title: "Chief Controller of Admissions, Billing & Student Records",
+    desk: "Administrative Block - Main Registrar Desk (Counter 01)",
+    phone: "+91 98111 22334",
+    responsibility: "Admissions Approvals, Fee Ledgers, Tuition Invoices, Document Verification & Timetable Audits",
+    employeeId: "REG-2021-001",
+    status: "Active Desk"
+  },
+  {
+    id: "r2",
+    name: "Sunita Sen",
+    email: "billing.registrar@college.edu",
+    title: "Senior Invoicing & Fee Operations Specialist",
+    desk: "Administrative Block - Counter 03",
+    phone: "+91 98111 22335",
+    responsibility: "Tuition Invoices, Outstanding Dues Collection & Payment Postings",
+    employeeId: "REG-2022-014",
+    status: "Active Desk"
+  },
+  {
+    id: "r3",
+    name: "Alok Kumar",
+    email: "verification.registrar@college.edu",
+    title: "Document Verification & Admissions Officer",
+    desk: "Administrative Block - Counter 05",
+    phone: "+91 98111 22336",
+    responsibility: "High School Marksheets, Passport/ID Checks & Admissions Approvals",
+    employeeId: "REG-2023-029",
+    status: "Active Desk"
+  },
+  {
+    id: "r4",
+    name: "Kavita Singh",
+    email: "academic.registrar@college.edu",
+    title: "Student Academic Records & Transcripts Manager",
+    desk: "Administrative Block - Counter 07",
+    phone: "+91 98111 22337",
+    responsibility: "Transcript Issuance, Academic Holds & Student Status Verification",
+    employeeId: "REG-2024-042",
+    status: "Active Desk"
+  }
+];
+
 export const generateWeeklySchedule = (branch, courses) => {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const timeSlots = [

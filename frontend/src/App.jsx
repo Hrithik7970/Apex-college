@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, GraduationCap, Sun, Moon, ShieldAlert, X, CreditCard, BookOpen, Calendar, Clock, MessageSquare, ClipboardList, Award, Bell, Menu } from 'lucide-react';
 import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/clerk-react';
-import { MOCK_STUDENTS, MOCK_PENDING_APPROVALS } from './mockData';
+import { MOCK_STUDENTS, MOCK_PENDING_APPROVALS, MOCK_PROFESSORS, MOCK_REGISTRARS } from './mockData';
 
 // Import components
 import Dashboard from './components/Dashboard';
@@ -14,6 +14,8 @@ import PendingApprovalView from './components/PendingApprovalView';
 import ApprovalsQueue from './components/ApprovalsQueue';
 import ProfessorWorkspace from './components/ProfessorWorkspace';
 import RegistrarWorkspace from './components/RegistrarWorkspace';
+import ProfessorsDirectory from './components/ProfessorsDirectory';
+import RegistrarsDirectory from './components/RegistrarsDirectory';
 import AnnouncementsBoard from './components/AnnouncementsBoard';
 import { api } from './api/client';
 
@@ -55,7 +57,6 @@ const seedStudentAttendanceLogs = (student) => {
 function App() {
   const { user } = useUser();
   const userEmail = user?.primaryEmailAddress?.emailAddress || '';
-
   const activeEmail = userEmail;
 
   // Local storage state syncing for database records
@@ -67,8 +68,10 @@ function App() {
       const total = logs.length;
       const present = logs.filter(l => l.status === 'Present' || l.status === 'Late').length;
       const derivedPct = total > 0 ? Math.round((present / total) * 100) : 100;
+      const clampedCgpa = student.cgpa ? Math.max(6.0, parseFloat(student.cgpa)) : 6.0;
       return {
         ...student,
+        cgpa: clampedCgpa,
         attendanceLogs: logs,
         attendance: derivedPct
       };
@@ -79,6 +82,25 @@ function App() {
     const localData = localStorage.getItem('pending_approvals');
     return localData ? JSON.parse(localData) : MOCK_PENDING_APPROVALS;
   });
+
+  // Professors and Registrars Directory States
+  const [professors, setProfessors] = useState(() => {
+    const localData = localStorage.getItem('college_professors');
+    return localData ? JSON.parse(localData) : MOCK_PROFESSORS;
+  });
+
+  const [registrars, setRegistrars] = useState(() => {
+    const localData = localStorage.getItem('college_registrars');
+    return localData ? JSON.parse(localData) : MOCK_REGISTRARS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('college_professors', JSON.stringify(professors));
+  }, [professors]);
+
+  useEffect(() => {
+    localStorage.setItem('college_registrars', JSON.stringify(registrars));
+  }, [registrars]);
 
   // Access Directory: Maps Emails to approved roles
   const [userRoles, setUserRoles] = useState(() => {
@@ -96,7 +118,15 @@ function App() {
       { email: "kabir.mehta@college.edu", role: "student", detailsId: "s5" },
       { email: "sneha.reddy@college.edu", role: "student", detailsId: "s6" },
       { email: "aditya.sen@college.edu", role: "student", detailsId: "s7" },
+      // Professors Mapping
       { email: "professor@college.edu", role: "professor", department: "Computer Science" },
+      { email: "sunita.rao@college.edu", role: "professor", department: "Computer Science" },
+      { email: "amit.kulkarni@college.edu", role: "professor", department: "Information Technology" },
+      { email: "priya.deshmukh@college.edu", role: "professor", department: "Electronics" },
+      { email: "vikram.joshi@college.edu", role: "professor", department: "Mechanical" },
+      { email: "meenakshi.iyer@college.edu", role: "professor", department: "Civil" },
+      { email: "suresh.nambiar@college.edu", role: "professor", department: "Electrical" },
+      // Registrars Mapping
       { email: "registrar@college.edu", role: "registrar" }
     ];
   });
@@ -188,7 +218,7 @@ function App() {
       {
         id: 'ann_1',
         title: 'End Term Theory Exams Schedule',
-        content: 'The final exams schedule has been posted on the college portal. Exams start from August 5th.',
+        content: 'The final exams schedule has been posted on the student portal. Exams start from August 5th.',
         priority: 'high',
         date: 'Jul 20, 2026'
       },
@@ -300,11 +330,12 @@ function App() {
     fetchBackendStudents();
   }, []);
 
-  // Determine User Role (Admin or Normal User/Student)
+  // Determine User Role (Admin or Normal User/Student/Registrar/Professor)
   useEffect(() => {
-    if (!userEmail) return;
+    if (!activeEmail) return;
 
-    const lowerEmail = userEmail.toLowerCase();
+    const lowerEmail = activeEmail.toLowerCase();
+    const clerkName = user?.fullName || user?.firstName || (activeEmail.includes('@') ? activeEmail.split('@')[0] : 'User');
 
     // 1. Admin Access Check
     if (lowerEmail === 'hraj22634@gmail.com' || lowerEmail === 'admin@college.edu' || lowerEmail.includes('admin')) {
@@ -313,7 +344,29 @@ function App() {
       return;
     }
 
-    // 2. Query Student Database by Logged-In Email
+    // 2. Query Authorized Database Roles
+    const matchedRoleEntry = userRoles.find(
+      (entry) => entry.email.toLowerCase() === lowerEmail
+    );
+
+    if (matchedRoleEntry) {
+      if (matchedRoleEntry.role === 'admin') {
+        setUserRole('admin');
+        setActiveTab('dashboard');
+      } else if (matchedRoleEntry.role === 'professor') {
+        setUserRole('professor');
+        setProfessorDept(matchedRoleEntry.department || 'Computer Science');
+      } else if (matchedRoleEntry.role === 'registrar') {
+        setUserRole('registrar');
+      } else {
+        setUserRole('student');
+        setStudentPortalId(matchedRoleEntry.detailsId);
+        setActiveTab('overview');
+      }
+      return;
+    }
+
+    // 3. Query Student Database by Logged-In Email
     const matchedStudent = students.find(
       (s) => s.email && s.email.toLowerCase() === lowerEmail
     );
@@ -325,27 +378,38 @@ function App() {
       return;
     }
 
-    // 3. Query Authorized Database Roles
-    const matchedRoleEntry = userRoles.find(
-      (entry) => entry.email.toLowerCase() === lowerEmail
-    );
-
-    if (matchedRoleEntry) {
-      if (matchedRoleEntry.role === 'admin') {
-        setUserRole('admin');
-        setActiveTab('dashboard');
-      } else {
-        setUserRole('student');
-        setStudentPortalId(matchedRoleEntry.detailsId);
-        setActiveTab('overview');
-      }
-      return;
+    // 4. Provision / Map profile for logged in user
+    const existingAuto = students.find(s => s.email && s.email.toLowerCase() === lowerEmail);
+    if (existingAuto) {
+      setUserRole('student');
+      setStudentPortalId(existingAuto._id || existingAuto.id);
+      setActiveTab('overview');
+    } else {
+      const newStudent = {
+        _id: 's_clerk_' + Date.now(),
+        name: clerkName,
+        rollNumber: 'CS2023' + Math.floor(100 + Math.random() * 899),
+        email: activeEmail,
+        department: 'Computer Science',
+        year: 1,
+        semester: 1,
+        cgpa: 8.5,
+        attendance: 92,
+        feeStatus: 'Paid',
+        feeAmount: 0,
+        courses: ['Database Systems', 'Computer Networks', 'Software Engineering', 'Artificial Intelligence'],
+        documents: [
+          { name: "High School Marksheet", status: "Verified" },
+          { name: "ID Proof / Passport", status: "Verified" },
+          { name: "Admissions Letter", status: "Verified" }
+        ]
+      };
+      setStudents((prev) => [newStudent, ...prev]);
+      setUserRole('student');
+      setStudentPortalId(newStudent._id);
+      setActiveTab('overview');
     }
-
-    // 4. Default for all other logged in users: Student Portal
-    setUserRole('student');
-    setActiveTab('overview');
-  }, [userEmail, students, userRoles]);
+  }, [activeEmail, user, students, userRoles]);
 
   // Toast helper
   const addToast = (message, type = 'success') => {
@@ -460,7 +524,7 @@ function App() {
         department: approvalPayload.department,
         year: approvalPayload.year,
         semester: approvalPayload.semester,
-        cgpa: approvalPayload.cgpa,
+        cgpa: Math.max(6.0, parseFloat(approvalPayload.cgpa) || 6.0),
         attendance: approvalPayload.attendance,
         feeStatus: approvalPayload.feeStatus,
         feeAmount: approvalPayload.feeAmount,
@@ -522,13 +586,6 @@ function App() {
     (req) => req.email.toLowerCase() === activeEmail.toLowerCase()
   );
 
-  const handleDemoLogin = (role, email) => {
-    setIsDemoMode(true);
-    setDemoUser({ role, email });
-    localStorage.setItem('college_demo_mode', 'true');
-    localStorage.setItem('college_demo_user', JSON.stringify({ role, email }));
-    addToast(`Logged in as ${role.toUpperCase()} (Demo Mode)`, 'success');
-  };
 
   const renderMainApp = () => {
     return (
@@ -556,13 +613,13 @@ function App() {
 
             <aside className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
               <div className="brand">
-                <div className="brand-logo">A</div>
-                <span className="brand-name">Apex College</span>
+                <div className="brand-logo">S</div>
+                <span className="brand-name" style={{ fontSize: '16px', lineHeight: '1.2' }}>Student Management System</span>
               </div>
 
               <ul className="menu-list">
                 {userRole === 'admin' && (
-                  /* Admin Navigation */
+                  /* Admin Navigation - Full System Control */
                   <>
                     <li>
                       <div 
@@ -580,6 +637,24 @@ function App() {
                       >
                         <Users size={20} />
                         Students Directory
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'professors_directory' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('professors_directory'); closeSidebar(); }}
+                      >
+                        <BookOpen size={20} />
+                        Professors Directory
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'registrars_directory' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('registrars_directory'); closeSidebar(); }}
+                      >
+                        <CreditCard size={20} />
+                        Registrars Directory
                       </div>
                     </li>
                     <li>
@@ -607,27 +682,117 @@ function App() {
                         )}
                       </div>
                     </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'professor_workspace' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('professor_workspace'); closeSidebar(); }}
+                      >
+                        <BookOpen size={20} />
+                        Faculty &amp; Grading
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'registrar_workspace' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('registrar_workspace'); closeSidebar(); }}
+                      >
+                        <CreditCard size={20} />
+                        Billing &amp; Documents
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'student_portal' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('student_portal'); closeSidebar(); }}
+                      >
+                        <GraduationCap size={20} />
+                        Student Portal Inspector
+                      </div>
+                    </li>
                   </>
                 )}
 
                 {userRole === 'professor' && (
-                  /* Professor Locked Navigation */
-                  <li>
-                    <div className="menu-item active">
-                      <Users size={20} />
-                      My Department ({professorDept})
-                    </div>
-                  </li>
+                  /* Professor Navigation Items in Left Column */
+                  <>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'performance' || activeTab === 'dashboard' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('performance'); closeSidebar(); }}
+                      >
+                        <Award size={20} />
+                        Grades &amp; Performance
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'attendance' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('attendance'); closeSidebar(); }}
+                      >
+                        <ClipboardList size={20} />
+                        Log Daily Attendance
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'complaints' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('complaints'); closeSidebar(); }}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <MessageSquare size={20} />
+                          Complaints Desk
+                        </div>
+                        {complaints.filter(c => c.department === professorDept && c.status === 'Pending').length > 0 && (
+                          <span className="badge badge-warning" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                            {complaints.filter(c => c.department === professorDept && c.status === 'Pending').length}
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'schedule' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('schedule'); closeSidebar(); }}
+                      >
+                        <Calendar size={20} />
+                        Department Schedule
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'roster' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('roster'); closeSidebar(); }}
+                      >
+                        <Users size={20} />
+                        Faculty &amp; Professors Roster
+                      </div>
+                    </li>
+                  </>
                 )}
 
                 {userRole === 'registrar' && (
-                  /* Registrar Locked Navigation */
-                  <li>
-                    <div className="menu-item active">
-                      <CreditCard size={20} />
-                      Fees &amp; Documents
-                    </div>
-                  </li>
+                  /* Registrar Navigation Items in Left Column */
+                  <>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'finance' || activeTab === 'dashboard' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('finance'); closeSidebar(); }}
+                      >
+                        <CreditCard size={20} />
+                        Finance &amp; Admissions
+                      </div>
+                    </li>
+                    <li>
+                      <div 
+                        className={`menu-item ${activeTab === 'roster' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('roster'); closeSidebar(); }}
+                      >
+                        <Users size={20} />
+                        Registrar Officers Roster
+                      </div>
+                    </li>
+                  </>
                 )}
 
                 {userRole === 'student' && (
@@ -697,7 +862,7 @@ function App() {
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                     <div>Student Profile:</div>
                     <strong style={{ display: 'block', color: 'var(--text-primary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {students.find(s => s._id === studentPortalId)?.name || 'Student'}
+                      {students.find(s => (s._id === studentPortalId || s.id === studentPortalId))?.name || user?.fullName || user?.firstName || 'Student'}
                     </strong>
                   </div>
                 )}
@@ -738,7 +903,12 @@ function App() {
                 <h1 className="page-title">
                   {userRole === 'admin' && activeTab === 'dashboard' && 'Campus Dashboard Overview'}
                   {userRole === 'admin' && activeTab === 'students' && 'Student Directory Matrix'}
+                  {userRole === 'admin' && activeTab === 'professors_directory' && 'Faculty & Professors Master Directory'}
+                  {userRole === 'admin' && activeTab === 'registrars_directory' && 'Registrar Officers & Desk Roster'}
                   {userRole === 'admin' && activeTab === 'approvals' && 'Registration Requests Queue'}
+                  {userRole === 'admin' && activeTab === 'professor_workspace' && 'Faculty & Departmental Grading Control'}
+                  {userRole === 'admin' && activeTab === 'registrar_workspace' && 'Admissions Billing Ledger & Documents Control'}
+                  {userRole === 'admin' && activeTab === 'student_portal' && 'Student Self-Service Portal Inspector'}
                   {userRole === 'professor' && 'Professor Grading & Attendance Panel'}
                   {userRole === 'registrar' && 'Admissions Billing Ledger & Documents'}
                   {userRole === 'student' && 'Student Self-Service Portal'}
@@ -960,6 +1130,8 @@ function App() {
                     );
                   })()}
 
+
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <UserButton afterSignOutUrl="/" />
                   </div>
@@ -984,7 +1156,7 @@ function App() {
                       onDeleteAnnouncement={handleDeleteAnnouncement}
                       userRole={userRole}
                     />
-                    <Dashboard students={students} />
+                    <Dashboard students={students} professors={professors} registrars={registrars} />
                   </>
                 )}
 
@@ -998,11 +1170,53 @@ function App() {
                   />
                 )}
 
+                {userRole === 'admin' && activeTab === 'professors_directory' && (
+                  <ProfessorsDirectory professors={professors} />
+                )}
+
+                {userRole === 'admin' && activeTab === 'registrars_directory' && (
+                  <RegistrarsDirectory registrars={registrars} />
+                )}
+
                 {userRole === 'admin' && activeTab === 'approvals' && (
                   <ApprovalsQueue 
                     pendingApprovals={pendingRequests}
                     onApprove={handleApproveRegistration}
                     onReject={handleRejectRegistration}
+                  />
+                )}
+
+                {userRole === 'admin' && activeTab === 'professor_workspace' && (
+                  <ProfessorWorkspace 
+                    students={students}
+                    department={professorDept}
+                    onUpdatePerformance={handleSaveStudent}
+                    onUpdateBulkAttendance={handleSaveBulkAttendance}
+                    complaints={complaints}
+                    onResolveComplaint={handleResolveComplaint}
+                    userRole={userRole}
+                    professors={professors}
+                  />
+                )}
+
+                {userRole === 'admin' && activeTab === 'registrar_workspace' && (
+                  <RegistrarWorkspace 
+                    students={students}
+                    onUpdateBilling={handleSaveStudent}
+                    onUpdateDocuments={handleSaveStudent}
+                    userRole={userRole}
+                    registrars={registrars}
+                  />
+                )}
+
+                {userRole === 'admin' && activeTab === 'student_portal' && (
+                  <StudentPortal 
+                    students={students} 
+                    initialStudentId={studentPortalId}
+                    complaints={complaints}
+                    onAddComplaint={handleAddComplaint}
+                    activeSection="overview"
+                    userRole={userRole}
                   />
                 )}
 
@@ -1021,6 +1235,10 @@ function App() {
                       onUpdateBulkAttendance={handleSaveBulkAttendance}
                       complaints={complaints}
                       onResolveComplaint={handleResolveComplaint}
+                      userRole={userRole}
+                      professors={professors}
+                      activeSection={activeTab}
+                      onTabChange={setActiveTab}
                     />
                   </>
                 )}
@@ -1037,6 +1255,10 @@ function App() {
                       students={students}
                       onUpdateBilling={handleSaveStudent}
                       onUpdateDocuments={handleSaveStudent}
+                      userRole={userRole}
+                      registrars={registrars}
+                      activeSection={activeTab}
+                      onTabChange={setActiveTab}
                     />
                   </>
                 )}
@@ -1052,10 +1274,12 @@ function App() {
                       />
                     )}
                     <StudentPortal 
-                      students={students.filter(s => s._id === studentPortalId)} 
+                      students={students} 
+                      initialStudentId={studentPortalId}
                       complaints={complaints}
                       onAddComplaint={handleAddComplaint}
                       activeSection={activeTab}
+                      userRole={userRole}
                     />
                   </>
                 )}

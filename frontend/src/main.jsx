@@ -33,7 +33,7 @@ function KeySetupFallback() {
       }}>
         <h2 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '16px', color: 'hsl(263.4, 70%, 58%)' }}>Clerk API Key Required</h2>
         <p style={{ fontSize: '14.5px', color: 'hsl(215, 20.2%, 65.1%)', lineHeight: '1.6', marginBottom: '24px' }}>
-          To enable secure college student/staff authentication, you need to configure your Clerk Publishable Key in the project environment.
+          To enable secure student/staff authentication, you need to configure your Clerk Publishable Key in the project environment.
         </p>
         <div style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.2)', padding: '16px 20px', borderRadius: '8px', border: '1px solid hsl(217.2, 32.6%, 17.5%)', fontSize: '13.5px', lineHeight: '1.7', marginBottom: '24px' }}>
           <strong style={{ display: 'block', marginBottom: '8px', color: 'white' }}>Quick Setup Instructions:</strong>

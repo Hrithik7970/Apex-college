@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
       department: s.department,
       year: s.year,
       semester: s.semester,
-      cgpa: parseFloat(s.cgpa) || 0.0,
+      cgpa: Math.max(6.0, parseFloat(s.cgpa) || 6.0),
       attendance: s.attendance || 0,
       feeStatus: s.feeStatus,
       feeAmount: s.feeAmount,
@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
       department,
       parseInt(year) || 1,
       parseInt(semester) || 1,
-      parseFloat(cgpa) || 0.0,
+      Math.max(6.0, parseFloat(cgpa) || 6.0),
       feeStatus || 'Pending',
       parseInt(feeAmount) || 0
     ]);
