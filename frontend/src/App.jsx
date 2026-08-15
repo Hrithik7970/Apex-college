@@ -54,7 +54,7 @@ const seedStudentAttendanceLogs = (student) => {
   return logs.sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
-function App() {
+function App({ guestMode = false }) {
   const { user } = useUser();
   const userEmail = user?.primaryEmailAddress?.emailAddress || '';
   const activeEmail = userEmail;
@@ -145,7 +145,8 @@ function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Gated Role States
-  const [userRole, setUserRole] = useState('pending'); // 'admin' | 'professor' | 'registrar' | 'student' | 'pending'
+  // In guestMode, we force 'admin' immediately so the full dashboard is visible
+  const [userRole, setUserRole] = useState(guestMode ? 'admin' : 'pending'); // 'admin' | 'professor' | 'registrar' | 'student' | 'pending'
   const [studentPortalId, setStudentPortalId] = useState('');
   const [professorDept, setProfessorDept] = useState('Computer Science');
   
@@ -332,6 +333,8 @@ function App() {
 
   // Determine User Role (Admin or Normal User/Student/Registrar/Professor)
   useEffect(() => {
+    // In guest mode, role is already forced to 'admin' — skip role resolution
+    if (guestMode) return;
     if (!activeEmail) return;
 
     const lowerEmail = activeEmail.toLowerCase();
@@ -409,7 +412,7 @@ function App() {
       setStudentPortalId(newStudent._id);
       setActiveTab('overview');
     }
-  }, [activeEmail, user, students, userRoles]);
+  }, [activeEmail, user, students, userRoles, guestMode]);
 
   // Toast helper
   const addToast = (message, type = 'success') => {
@@ -586,6 +589,59 @@ function App() {
     (req) => req.email.toLowerCase() === activeEmail.toLowerCase()
   );
 
+  // Guest mode: sign out handler — clears guest flag and goes back to login
+  const handleGuestSignOut = () => {
+    localStorage.removeItem('guest_mode');
+    window.location.reload();
+  };
+
+  // Guest mode banner — shown at top of the page for guest users
+  const GuestBanner = () => (
+    <div id="guest-mode-banner" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+      padding: '10px 20px',
+      backgroundColor: 'hsl(262.1, 83.3%, 57.8%)',
+      background: 'linear-gradient(90deg, hsl(262.1, 83.3%, 52%) 0%, hsl(280, 75%, 55%) 100%)',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      zIndex: 200,
+      flexShrink: 0,
+      flexWrap: 'wrap'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '16px' }}>👁</span>
+        <span>
+          <strong>Guest Mode</strong> — You're viewing a read-only demo of the Student Management System.
+        </span>
+      </div>
+      <button
+        id="guest-signin-btn"
+        onClick={handleGuestSignOut}
+        style={{
+          padding: '6px 16px',
+          backgroundColor: 'rgba(255,255,255,0.2)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          borderRadius: '6px',
+          color: 'white',
+          fontSize: '12px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          backdropFilter: 'blur(4px)',
+          transition: 'background-color 0.15s ease',
+          fontFamily: 'var(--font-family)'
+        }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+      >
+        Sign In →
+      </button>
+    </div>
+  );
 
   const renderMainApp = () => {
     return (
@@ -878,17 +934,25 @@ function App() {
                     Registrar Office
                   </div>
                 )}
-                {userRole === 'admin' && (
+                {userRole === 'admin' && !guestMode && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)' }} />
                     Admin Mode Active
+                  </div>
+                )}
+                {guestMode && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'hsl(262.1, 83.3%, 57.8%)' }} />
+                    Guest Viewer (Read-only)
                   </div>
                 )}
               </div>
             </aside>
 
             {/* Main Content Area */}
-            <main className="main-wrapper">
+            <main className="main-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Guest Banner — shown only in guest mode */}
+              {guestMode && <GuestBanner />}
               
               {/* Navbar */}
               <header className="navbar">
@@ -916,8 +980,8 @@ function App() {
 
                 <div className="nav-actions">
                   <span className="role-badge">
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: userRole === 'admin' ? 'var(--success)' : 'var(--accent)' }} />
-                    Role: {userRole === 'admin' ? 'Staff Admin' : userRole === 'professor' ? 'Teacher' : userRole === 'registrar' ? 'Registrar' : 'Student'}
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: guestMode ? 'hsl(262.1, 83.3%, 57.8%)' : userRole === 'admin' ? 'var(--success)' : 'var(--accent)' }} />
+                    {guestMode ? '👁 Guest Viewer' : `Role: ${userRole === 'admin' ? 'Staff Admin' : userRole === 'professor' ? 'Teacher' : userRole === 'registrar' ? 'Registrar' : 'Student'}`}
                   </span>
 
                   {/* Notification Bell */}
@@ -1132,9 +1196,34 @@ function App() {
 
 
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <UserButton afterSignOutUrl="/" />
-                  </div>
+                  {/* Show UserButton for real auth users; show Exit Guest for guest mode */}
+                  {guestMode ? (
+                    <button
+                      id="exit-guest-btn"
+                      onClick={handleGuestSignOut}
+                      title="Exit Guest Mode"
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: 'hsl(262.1, 83.3%, 57.8%)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-family)',
+                        transition: 'opacity 0.15s ease'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    >
+                      Sign In
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <UserButton afterSignOutUrl="/" />
+                    </div>
+                  )}
 
                   <button 
                     className="btn-icon" 
@@ -1152,9 +1241,10 @@ function App() {
                   <>
                     <AnnouncementsBoard 
                       announcements={announcements} 
-                      onAddAnnouncement={handleAddAnnouncement}
-                      onDeleteAnnouncement={handleDeleteAnnouncement}
+                      onAddAnnouncement={guestMode ? null : handleAddAnnouncement}
+                      onDeleteAnnouncement={guestMode ? null : handleDeleteAnnouncement}
                       userRole={userRole}
+                      guestMode={guestMode}
                     />
                     <Dashboard students={students} professors={professors} registrars={registrars} />
                   </>
@@ -1164,9 +1254,10 @@ function App() {
                   <StudentTable 
                     students={students}
                     onSelectStudent={openDetailModal}
-                    onEditStudent={openEditDrawer}
-                    onDeleteStudent={handleDeleteStudent}
-                    onAddStudent={openAddDrawer}
+                    onEditStudent={guestMode ? null : openEditDrawer}
+                    onDeleteStudent={guestMode ? null : handleDeleteStudent}
+                    onAddStudent={guestMode ? null : openAddDrawer}
+                    guestMode={guestMode}
                   />
                 )}
 
@@ -1181,8 +1272,9 @@ function App() {
                 {userRole === 'admin' && activeTab === 'approvals' && (
                   <ApprovalsQueue 
                     pendingApprovals={pendingRequests}
-                    onApprove={handleApproveRegistration}
-                    onReject={handleRejectRegistration}
+                    onApprove={guestMode ? null : handleApproveRegistration}
+                    onReject={guestMode ? null : handleRejectRegistration}
+                    guestMode={guestMode}
                   />
                 )}
 
@@ -1310,13 +1402,20 @@ function App() {
 
   return (
     <>
-      <SignedOut>
-        <LoginView />
-      </SignedOut>
+      {/* Guest mode: render app directly without Clerk SignedIn/SignedOut gates */}
+      {guestMode ? (
+        renderMainApp()
+      ) : (
+        <>
+          <SignedOut>
+            <LoginView />
+          </SignedOut>
 
-      <SignedIn>
-        {renderMainApp()}
-      </SignedIn>
+          <SignedIn>
+            {renderMainApp()}
+          </SignedIn>
+        </>
+      )}
 
       {/* Toast Overlay Notification System */}
       <div className="toasts-container">

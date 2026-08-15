@@ -5,7 +5,8 @@ export default function AnnouncementsBoard({
   announcements = [], 
   onAddAnnouncement, 
   onDeleteAnnouncement, 
-  userRole 
+  userRole,
+  guestMode = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -69,7 +70,7 @@ export default function AnnouncementsBoard({
           </div>
         </div>
         
-        {userRole === 'admin' && (
+        {userRole === 'admin' && !guestMode && (
           <button 
             type="button" 
             className="btn-primary" 
@@ -186,7 +187,7 @@ export default function AnnouncementsBoard({
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>{item.content}</p>
                 </div>
 
-                {userRole === 'admin' && (
+                {userRole === 'admin' && !guestMode && (
                   <button 
                     type="button" 
                     onClick={() => onDeleteAnnouncement(item.id)}

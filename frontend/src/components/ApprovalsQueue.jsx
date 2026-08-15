@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Check, X, ShieldAlert, Users, Award, CreditCard } from 'lucide-react';
 import { DEPARTMENTS, COURSES_BY_DEPT } from '../mockData';
 
-export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onReject }) {
+export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onReject, guestMode = false }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   
   // Dynamic role assignment states
@@ -147,20 +147,26 @@ export default function ApprovalsQueue({ pendingApprovals = [], onApprove, onRej
                   </td>
                   <td>
                     <div className="actions-cell">
-                      <button 
-                        className="btn-primary" 
-                        style={{ padding: '6px 14px', fontSize: '12px' }}
-                        onClick={() => openApproveModal(req)}
-                      >
-                        <Check size={13} /> Approve &amp; Assign Role
-                      </button>
-                      <button 
-                        className="btn-action delete"
-                        onClick={() => onReject(req.id)}
-                        title="Reject Request"
-                      >
-                        <X size={14} />
-                      </button>
+                      {guestMode ? (
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Read-only</span>
+                      ) : (
+                        <>
+                          <button 
+                            className="btn-primary" 
+                            style={{ padding: '6px 14px', fontSize: '12px' }}
+                            onClick={() => openApproveModal(req)}
+                          >
+                            <Check size={13} /> Approve &amp; Assign Role
+                          </button>
+                          <button 
+                            className="btn-action delete"
+                            onClick={() => onReject(req.id)}
+                            title="Reject Request"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

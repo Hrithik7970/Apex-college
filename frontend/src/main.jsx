@@ -9,6 +9,9 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 // Check if key is missing or placeholder
 const isKeyMissing = !PUBLISHABLE_KEY || PUBLISHABLE_KEY.trim() === '' || PUBLISHABLE_KEY.includes('your_publishable_key_here');
 
+// Check if the user has chosen to browse as a guest
+const isGuestMode = localStorage.getItem('guest_mode') === 'true';
+
 function KeySetupFallback() {
   return (
     <div style={{
@@ -52,14 +55,27 @@ function KeySetupFallback() {
   );
 }
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    {isKeyMissing ? (
+// If guest mode is active and Clerk key is missing, render App in guest mode without Clerk
+if (isGuestMode && isKeyMissing) {
+  createRoot(document.getElementById('root')).render(
+    <StrictMode>
+      <App guestMode={true} />
+    </StrictMode>
+  );
+} else if (isKeyMissing) {
+  // No Clerk key, no guest mode — show setup instructions
+  createRoot(document.getElementById('root')).render(
+    <StrictMode>
       <KeySetupFallback />
-    ) : (
+    </StrictMode>
+  );
+} else {
+  // Normal path: Clerk is configured. Guest mode bypasses SignedIn inside App.
+  createRoot(document.getElementById('root')).render(
+    <StrictMode>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        <App />
+        <App guestMode={isGuestMode} />
       </ClerkProvider>
-    )}
-  </StrictMode>
-)
+    </StrictMode>
+  );
+}

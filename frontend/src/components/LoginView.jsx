@@ -1,6 +1,78 @@
 import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
-import { Shield, BookOpen, Users, BarChart2 } from 'lucide-react';
+import { Shield, BookOpen, Users, BarChart2, Eye } from 'lucide-react';
+
+function GuestButton() {
+  const handleGuestAccess = () => {
+    localStorage.setItem('guest_mode', 'true');
+    window.location.reload();
+  };
+
+  return (
+    <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+      {/* Divider */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '20px'
+      }}>
+        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
+        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '500', whiteSpace: 'nowrap' }}>
+          or explore without an account
+        </span>
+        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
+      </div>
+
+      {/* Guest Button */}
+      <button
+        id="guest-access-btn"
+        onClick={handleGuestAccess}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          padding: '13px 20px',
+          backgroundColor: 'transparent',
+          border: '1.5px solid var(--border-color)',
+          borderRadius: '10px',
+          color: 'var(--text-secondary)',
+          fontSize: '14px',
+          fontWeight: '600',
+          fontFamily: 'var(--font-family)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          letterSpacing: '0.01em'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = 'hsl(262.1, 83.3%, 57.8%)';
+          e.currentTarget.style.color = 'hsl(262.1, 83.3%, 57.8%)';
+          e.currentTarget.style.backgroundColor = 'hsl(262.1, 83.3%, 57.8%, 0.06)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = 'var(--border-color)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
+      >
+        <Eye size={16} />
+        Continue as Guest (Demo View)
+        <span style={{ marginLeft: 'auto', fontSize: '16px' }}>→</span>
+      </button>
+
+      <p style={{
+        marginTop: '10px',
+        fontSize: '11.5px',
+        color: 'var(--text-tertiary)',
+        lineHeight: '1.5'
+      }}>
+        Read-only access · No login required · All sample data visible
+      </p>
+    </div>
+  );
+}
 
 export default function LoginView() {
   return (
@@ -170,6 +242,9 @@ export default function LoginView() {
             }}
           />
         </div>
+
+        {/* Guest Access Button */}
+        <GuestButton />
 
       </div>
 

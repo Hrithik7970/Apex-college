@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Eye, Edit2, Trash2, Plus, Filter, AlertCircle } from 'lucide-react';
 import { DEPARTMENTS } from '../mockData';
 
-export default function StudentTable({ students = [], onSelectStudent, onEditStudent, onDeleteStudent, onAddStudent }) {
+export default function StudentTable({ students = [], onSelectStudent, onEditStudent, onDeleteStudent, onAddStudent, guestMode = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [feeFilter, setFeeFilter] = useState('');
@@ -81,10 +81,12 @@ export default function StudentTable({ students = [], onSelectStudent, onEditStu
             &lt; 75% Attendance
           </button>
 
-          <button className="btn-primary" onClick={onAddStudent}>
-            <Plus size={16} />
-            Register Student
-          </button>
+          {!guestMode && (
+            <button className="btn-primary" onClick={onAddStudent}>
+              <Plus size={16} />
+              Register Student
+            </button>
+          )}
         </div>
       </div>
 
@@ -161,12 +163,16 @@ export default function StudentTable({ students = [], onSelectStudent, onEditStu
                         <button className="btn-action" onClick={() => onSelectStudent(student)} title="View Details">
                           <Eye size={14} />
                         </button>
-                        <button className="btn-action edit" onClick={() => onEditStudent(student)} title="Edit Record">
-                          <Edit2 size={14} />
-                        </button>
-                        <button className="btn-action delete" onClick={() => onDeleteStudent(student._id)} title="Delete Record">
-                          <Trash2 size={14} />
-                        </button>
+                        {!guestMode && (
+                          <>
+                            <button className="btn-action edit" onClick={() => onEditStudent(student)} title="Edit Record">
+                              <Edit2 size={14} />
+                            </button>
+                            <button className="btn-action delete" onClick={() => onDeleteStudent(student._id)} title="Delete Record">
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
